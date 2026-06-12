@@ -13,7 +13,7 @@
             min-height: 100vh; 
             margin: 0; 
             background-color: #f0f0f0; 
-            overflow-x: hidden; /* Убирает горизонтальный скролл */
+            overflow-x: hidden; 
             touch-action: manipulation; 
             -webkit-user-select: none; 
             user-select: none;
@@ -22,7 +22,7 @@
         #viewport { 
             width: 340px; 
             transform-origin: top center; 
-            transform: scale(1.2); /* Масштаб 1.2 дает идеальную ширину 408px */
+            transform: scale(1.2); 
             padding: 10px; 
             box-sizing: border-box;
         }
@@ -92,8 +92,8 @@
     let currentSide = '';
     let lastServe = 0; 
     const teamState = {
-        top: { name: "Команда 1", roster: [], onField: Array(6).fill({num: '', name: ''}) },
-        bottom: { name: "Команда 2", roster: [], onField: Array(6).fill({num: '', name: ''}) }
+        top: { name: "Команда 1", roster: [], onField: Array(6).fill({num: '', name: ''}), historySubs: [{in:{num:'',name:''}, out:{num:'',name:''}}, {in:{num:'',name:''}, out:{num:'',name:''}}] },
+        bottom: { name: "Команда 2", roster: [], onField: Array(6).fill({num: '', name: ''}), historySubs: [{in:{num:'',name:''}, out:{num:'',name:''}}, {in:{num:'',name:''}, out:{num:'',name:''}}] }
     };
     const topMap = [0, 5, 4, 1, 2, 3]; 
     const bottomMap = [3, 2, 1, 4, 5, 0]; 
@@ -131,8 +131,40 @@
         const homeData = teamState[homeSide];
         const awaySide = (homeSide === 'top') ? 'bottom' : 'top';
         const awayData = teamState[awaySide];
-        const serverData = [{ home_num: homeData.onField[0].num || "-", home_name: homeData.onField[0].name || "-", away_num: awayData.onField[0].num || "-", away_name: awayData.onField[0].name || "-" }];
-        try { await fetch("https://volleyplayers-default-rtdb.europe-west1.firebasedatabase.app/vmix.json", { method: "PUT", body: JSON.stringify(serverData) }); } catch (e) { console.error("Ошибка:", e); }
+
+        const serverData = [{
+            home_num: homeData.onField[0].num || "-",
+            home_name: homeData.onField[0].name || "-",
+            away_num: awayData.onField[0].num || "-",
+            away_name: awayData.onField[0].name || "-",
+
+            heim_wechs_in_Name1: homeData.historySubs[0].in.name,
+            heim_wechs_in_Num1: homeData.historySubs[0].in.num,
+            heim_wechs_aus_Name1: homeData.historySubs[0].out.name,
+            heim_wechs_aus_Num1: homeData.historySubs[0].out.num,
+
+            heim_wechs_in_Name2: homeData.historySubs[1].in.name,
+            heim_wechs_in_Num2: homeData.historySubs[1].in.num,
+            heim_wechs_aus_Name2: homeData.historySubs[1].out.name,
+            heim_wechs_aus_Num2: homeData.historySubs[1].out.num,
+
+            gast_wechs_in_Name1: awayData.historySubs[0].in.name,
+            gast_wechs_in_Num1: awayData.historySubs[0].in.num,
+            gast_wechs_aus_Name1: awayData.historySubs[0].out.name,
+            gast_wechs_aus_Num1: awayData.historySubs[0].out.num,
+
+            gast_wechs_in_Name2: awayData.historySubs[1].in.name,
+            gast_wechs_in_Num2: awayData.historySubs[1].in.num,
+            gast_wechs_aus_Name2: awayData.historySubs[1].out.name,
+            gast_wechs_aus_Num2: awayData.historySubs[1].out.num
+        }];
+
+        try { 
+            await fetch("https://volleyplayers-default-rtdb.europe-west1.firebasedatabase.app/vmix.json", { 
+                method: "PUT", 
+                body: JSON.stringify(serverData) 
+            }); 
+        } catch (e) { console.error("Ошибка:", e); }
     }
 
     function updateHighlight(serveValue) {
@@ -150,7 +182,33 @@
     }
 
     function updateFieldDisplay(side) { const btns = document.getElementById(side + '-side').querySelectorAll('.player'); const map = (side === 'top') ? topMap : bottomMap; btns.forEach((btn, i) => { const p = teamState[side].onField[map[i]]; btn.innerText = p.num; btn.title = p.name; }); }
-    function initSub(side, btnIndex) { currentSide = side; const map = (side === 'top') ? topMap : bottomMap; const playerIndex = map[btnIndex]; const bench = document.getElementById('bench-list'); bench.innerHTML = ''; const onFieldNums = teamState[side].onField.map(p => p.num); teamState[side].roster.filter(p => !onFieldNums.includes(p.num)).forEach(p => { const d = document.createElement('div'); d.className = 'bench-item'; d.innerText = p.num + ' ' + p.name; d.onclick = () => { teamState[side].onField[playerIndex] = { num: p.num, name: p.name }; updateFieldDisplay(side); closeModal('sub'); pushServerToFirebase(); }; bench.appendChild(d); }); document.getElementById('sub-modal').style.display = 'block'; }
+    
+    function initSub(side, btnIndex) { 
+        currentSide = side; 
+        const map = (side === 'top') ? topMap : bottomMap; 
+        const playerIndex = map[btnIndex]; 
+        const bench = document.getElementById('bench-list'); 
+        bench.innerHTML = ''; 
+        const onFieldNums = teamState[side].onField.map(p => p.num); 
+        teamState[side].roster.filter(p => !onFieldNums.includes(p.num)).forEach(p => { 
+            const d = document.createElement('div'); 
+            d.className = 'bench-item'; 
+            d.innerText = p.num + ' ' + p.name; 
+            d.onclick = () => { 
+                const subOut = teamState[side].onField[playerIndex];
+                const subIn = { num: p.num, name: p.name };
+                teamState[side].historySubs[1] = teamState[side].historySubs[0];
+                teamState[side].historySubs[0] = { in: subIn, out: subOut };
+                teamState[side].onField[playerIndex] = subIn; 
+                updateFieldDisplay(side); 
+                closeModal('sub'); 
+                pushServerToFirebase(); 
+            }; 
+            bench.appendChild(d); 
+        }); 
+        document.getElementById('sub-modal').style.display = 'block'; 
+    }
+    
     function swapSides() { homeSide = (homeSide === 'top') ? 'bottom' : 'top'; [teamState.top, teamState.bottom] = [teamState.bottom, teamState.top]; document.getElementById('top-name').innerText = teamState.top.name; document.getElementById('bottom-name').innerText = teamState.bottom.name; document.querySelectorAll('.player').forEach(p => { p.classList.toggle('color-blue'); p.classList.toggle('color-gray'); }); updateFieldDisplay('top'); updateFieldDisplay('bottom'); pushServerToFirebase(); }
     function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; } }
     function openModal(type, side) { currentSide = side; document.getElementById(type + '-title').innerText = teamState[side].name; if (type === 'list') document.getElementById('listInput').value = teamState[side].roster.map(p => `${p.num}, ${p.name}`).join('\n'); else if (type === 'setup') document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}` : '').join('\n'); document.getElementById(type + '-modal').style.display = 'block'; }
