@@ -1,1 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Волейбольный пульт (Расстановка)</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f0f0f0; }
+        .control-panel { width: 340px; padding: 15px; display: flex; flex-direction: column; }
+        .side { background-color: #f8fff6; border: 2px solid #a8cfa3; padding: 12px; border-radius: 15px; position: relative; }
+        .team-selector { background-color: #88c060; color: white; border: none; font-size: 18px; padding: 12px 0; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
+        .icon-btn, .zoom-btn { background-color: #8b9dad; color: white; border: none; border-radius: 8px; width: 45px; height: 45px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; }
+        .swap-container { display: flex; justify-content: center; align-items: center; height: 30px; z-index: 10; }
+        .swap-btn { background-color: #ff9800; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; color: white; font-size: 24px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .controls-row { display: flex; justify-content: space-between; margin: 12px 0; }
+        .field { background-color: #b1bdc5; border-radius: 10px; height: 140px; position: relative; padding: 5px; }
+        .field-rows { display: flex; flex-direction: column; height: 100%; }
+        .row { flex: 1; display: flex; justify-content: space-around; align-items: center; }
+        .player { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 22px; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .color-blue { background-color: #008cc9; }
+        .color-gray { background-color: #6e6e6e; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; }
+        .bench-item { cursor: pointer; padding: 10px; border-bottom: 1px solid #ddd; }
+    </style>
+</head>
+<body>
 
+<div class="control-panel">
+    <div class="side" id="top-side">
+        <button class="team-selector" id="top-name" onclick="editTeamName('top')">Команда 1</button>
+        <div class="controls-row">
+            <button class="icon-btn">📽️</button>
+            <button class="icon-btn" onclick="openModal('list', 'top')">📋</button>
+            <button class="zoom-btn" onclick="openModal('setup', 'top')">Z</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="icon-btn" onclick="rotatePlayers('top', 1)">↺</button>
+                <button class="icon-btn" onclick="rotatePlayers('top', -1)">↻</button>
+            </div>
+        </div>
+        <div class="field"><div class="field-rows">
+            <div class="row"><button class="player color-blue" onclick="initSub('top', 0)"></button><button class="player color-blue" onclick="initSub('top', 1)"></button><button class="player color-blue" onclick="initSub('top', 2)"></button></div>
+            <div class="row"><button class="player color-blue" onclick="initSub('top', 3)"></button><button class="player color-blue" onclick="initSub('top', 4)"></button><button class="player color-blue" onclick="initSub('top', 5)"></button></div>
+        </div></div>
+    </div>
+
+    <div class="swap-container"><button class="swap-btn" onclick="swapSides()">⇄</button></div>
+
+    <div class="side" id="bottom-side">
+        <div class="field"><div class="field-rows">
+            <div class="row"><button class="player color-gray" onclick="initSub('bottom', 0)"></button><button class="player color-gray" onclick="initSub('bottom', 1)"></button><button class="player color-gray" onclick="initSub('bottom', 2)"></button></div>
+            <div class="row"><button class="player color-gray" onclick="initSub('bottom', 3)"></button><button class="player color-gray" onclick="initSub('bottom', 4)"></button><button class="player color-gray" onclick="initSub('bottom', 5)"></button></div>
+        </div></div>
+        <div class="controls-row">
+            <div style="display: flex; gap: 8px;">
+                <button class="icon-btn" onclick="rotatePlayers('bottom', 1)">↺</button>
+                <button class="icon-btn" onclick="rotatePlayers('bottom', -1)">↻</button>
+            </div>
+            <button class="zoom-btn" onclick="openModal('setup', 'bottom')">Z</button>
+            <button class="icon-btn" onclick="openModal('list', 'bottom')">📋</button>
+            <button class="icon-btn">📽️</button>
+        </div>
+        <button class="team-selector" id="bottom-name" onclick="editTeamName('bottom')">Команда 2</button>
+    </div>
+</div>
+
+<div id="list-modal" class="modal"><h3 id="list-title">Список</h3><textarea id="listInput" style="width:250px; height:100px;"></textarea><br><button onclick="saveList()">Сохранить</button></div>
+<div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:250px; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
+<div id="sub-modal" class="modal"><h3>Замена</h3><div id="bench-list"></div><br><button onclick="closeModal('sub')">Отмена</button></div>
+
+<script>
+    let homeSide = 'top'; 
+    let currentSide = '';
+    let lastServe = 0; 
+    const teamState = {
+        top: { name: "Команда 1", roster: [], onField: Array(6).fill({num: '', name: ''}) },
+        bottom: { name: "Команда 2", roster: [], onField: Array(6).fill({num: '', name: ''}) }
+    };
+    const topMap = [0, 5, 4, 1, 2, 3]; 
+    const bottomMap = [3, 2, 1, 4, 5, 0]; 
+
+    async function syncServeStatus() {
+        try {
+            const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/match.json");
+            const data = await response.json();
+            if (!data) return;
+
+            if (!window.lastProcessedUndo) window.lastProcessedUndo = { exists: false };
+
+            // 1. ЛОГИКА ОТМЕНЫ (с защитным return)
+            if (data.isUndo === true) {
+                if (!window.lastProcessedUndo.exists) {
+                    if (data.serve !== lastServe) {
+                        let sideToRotate = (lastServe === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
+                        rotatePlayers(sideToRotate, 1); 
+                    }
+                    window.lastProcessedUndo.exists = true;
+                }
+                lastServe = data.serve;
+                updateHighlight(data.serve);
+                return; // Останавливаем выполнение, чтобы не запустить обычную логику
+            } else {
+                window.lastProcessedUndo.exists = false;
+            }
+
+            // 2. Обработка ручного переключения
+            if (data.manualMode === true) {
+                lastServe = data.serve;
+                updateHighlight(data.serve);
+                return; 
+            }
+
+            // 3. ОБЫЧНАЯ ЛОГИКА
+            if (lastServe !== 0 && lastServe !== data.serve) {
+                let sideToRotate = (data.serve === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
+                rotatePlayers(sideToRotate, -1);
+            }
+            
+            lastServe = data.serve;
+            updateHighlight(data.serve);
+        } catch (e) { console.error("Ошибка Firebase:", e); }
+    }
+    setInterval(syncServeStatus, 1500);
+
+    // Вспомогательные функции...
+    async function pushServerToFirebase() {
+        const homeData = teamState[homeSide];
+        const awaySide = (homeSide === 'top') ? 'bottom' : 'top';
+        const awayData = teamState[awaySide];
+        const serverData = [{ home_num: homeData.onField[0].num || "-", home_name: homeData.onField[0].name || "-", away_num: awayData.onField[0].num || "-", away_name: awayData.onField[0].name || "-" }];
+        try { await fetch("https://volleyplayers-default-rtdb.europe-west1.firebasedatabase.app/vmix.json", { method: "PUT", body: JSON.stringify(serverData) }); } catch (e) { console.error("Ошибка:", e); }
+    }
+
+    function updateHighlight(serveValue) {
+        document.querySelectorAll('.player').forEach(p => { p.style.border = 'none'; });
+        let targetSide = (serveValue === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
+        const targetBtn = (targetSide === 'top') ? 0 : 5;
+        const players = document.getElementById(targetSide + '-side').querySelectorAll('.player');
+        if (players[targetBtn]) players[targetBtn].style.border = '4px solid #ffd700';
+    }
+
+    function rotatePlayers(side, dir) {
+        if (dir === 1) teamState[side].onField.unshift(teamState[side].onField.pop());
+        else teamState[side].onField.push(teamState[side].onField.shift());
+        updateFieldDisplay(side); pushServerToFirebase();
+    }
+
+    function updateFieldDisplay(side) { const btns = document.getElementById(side + '-side').querySelectorAll('.player'); const map = (side === 'top') ? topMap : bottomMap; btns.forEach((btn, i) => { const p = teamState[side].onField[map[i]]; btn.innerText = p.num; btn.title = p.name; }); }
+    function initSub(side, btnIndex) { currentSide = side; const map = (side === 'top') ? topMap : bottomMap; const playerIndex = map[btnIndex]; const bench = document.getElementById('bench-list'); bench.innerHTML = ''; const onFieldNums = teamState[side].onField.map(p => p.num); teamState[side].roster.filter(p => !onFieldNums.includes(p.num)).forEach(p => { const d = document.createElement('div'); d.className = 'bench-item'; d.innerText = p.num + ' ' + p.name; d.onclick = () => { teamState[side].onField[playerIndex] = { num: p.num, name: p.name }; updateFieldDisplay(side); closeModal('sub'); pushServerToFirebase(); }; bench.appendChild(d); }); document.getElementById('sub-modal').style.display = 'block'; }
+    function swapSides() { homeSide = (homeSide === 'top') ? 'bottom' : 'top'; [teamState.top, teamState.bottom] = [teamState.bottom, teamState.top]; document.getElementById('top-name').innerText = teamState.top.name; document.getElementById('bottom-name').innerText = teamState.bottom.name; document.querySelectorAll('.player').forEach(p => { p.classList.toggle('color-blue'); p.classList.toggle('color-gray'); }); updateFieldDisplay('top'); updateFieldDisplay('bottom'); pushServerToFirebase(); }
+    function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; } }
+    function openModal(type, side) { currentSide = side; document.getElementById(type + '-title').innerText = teamState[side].name; if (type === 'list') document.getElementById('listInput').value = teamState[side].roster.map(p => `${p.num}, ${p.name}`).join('\n'); else if (type === 'setup') document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}` : '').join('\n'); document.getElementById(type + '-modal').style.display = 'block'; }
+    function closeModal(type) { document.getElementById(type + '-modal').style.display = 'none'; }
+    function saveList() { const text = document.getElementById('listInput').value; teamState[currentSide].roster = text.split('\n').filter(l => l.trim() !== "").map(l => { const [num, ...name] = l.split(','); return { num: num.trim(), name: name.join(',').trim() }; }); closeModal('list'); }
+    function saveSetup() { const text = document.getElementById('setupInput').value; const lines = text.split('\n').filter(l => l.trim() !== ""); teamState[currentSide].onField = Array(6).fill({num: '', name: ''}); lines.forEach((line, i) => { if (i < 6) { const [num] = line.split(','); const found = teamState[currentSide].roster.find(p => p.num === num.trim()); teamState[currentSide].onField[i] = found ? { num: found.num, name: found.name } : { num: num.trim(), name: "" }; } }); updateFieldDisplay(currentSide); closeModal('setup'); pushServerToFirebase(); }
+</script>
+</body>
+</html>
