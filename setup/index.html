@@ -5,72 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Волейбольный пульт (Расстановка)</title>
     <style>
-        /* Стиль: Растянутый, но с сохранением всех пропорций */
         body { 
-            font-family: sans-serif; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh; 
-            margin: 0; 
-            background-color: #f0f0f0; 
-            overflow: hidden; 
-            overscroll-behavior: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            font-family: sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; background-color: #f0f0f0; overflow-x: hidden;
+            touch-action: manipulation; -webkit-user-select: none; user-select: none;
         }
-        /* Увеличено с 340px до 420px */
-        .control-panel { width: 420px; padding: 18px; display: flex; flex-direction: column; }
-        .side { background-color: #f8fff6; border: 2px solid #a8cfa3; padding: 15px; border-radius: 15px; position: relative; }
-        .team-selector { background-color: #88c060; color: white; border: none; font-size: 20px; padding: 15px 0; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
-        .icon-btn, .zoom-btn { background-color: #8b9dad; color: white; border: none; border-radius: 10px; width: 56px; height: 56px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 20px; font-weight: bold; }
-        .swap-container { display: flex; justify-content: center; align-items: center; height: 37px; z-index: 10; }
-        .swap-btn { background-color: #ff9800; border: none; border-radius: 50%; width: 59px; height: 59px; cursor: pointer; color: white; font-size: 26px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .controls-row { display: flex; justify-content: space-between; margin: 15px 0; }
-        .field { background-color: #b1bdc5; border-radius: 10px; height: 173px; position: relative; padding: 6px; }
+        #viewport { width: 340px; transform-origin: top center; transform: scale(1.23); padding: 10px; }
+        
+        .control-panel { display: flex; flex-direction: column; gap: 10px; }
+        .side { background-color: #f8fff6; border: 2px solid #a8cfa3; padding: 12px; border-radius: 15px; position: relative; }
+        .team-selector { background-color: #88c060; color: white; border: none; font-size: 18px; padding: 12px 0; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
+        .icon-btn, .zoom-btn { background-color: #8b9dad; color: white; border: none; border-radius: 8px; width: 45px; height: 45px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; }
+        .swap-container { display: flex; justify-content: center; align-items: center; height: 30px; }
+        .swap-btn { background-color: #ff9800; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; color: white; font-size: 24px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .controls-row { display: flex; justify-content: space-between; margin: 12px 0; }
+        .field { background-color: #b1bdc5; border-radius: 10px; height: 140px; position: relative; padding: 5px; }
         .field-rows { display: flex; flex-direction: column; height: 100%; }
         .row { flex: 1; display: flex; justify-content: space-around; align-items: center; }
-        .player { width: 59px; height: 59px; border-radius: 50%; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 26px; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .player { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 22px; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .color-blue { background-color: #008cc9; }
         .color-gray { background-color: #6e6e6e; }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; }
-        .bench-item { cursor: pointer; padding: 12px; border-bottom: 1px solid #ddd; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; }
+        .bench-item { cursor: pointer; padding: 10px; border-bottom: 1px solid #ddd; }
     </style>
 </head>
 <body>
 
-<div class="control-panel">
-    <div class="side" id="top-side">
-        <button class="team-selector" id="top-name" onclick="editTeamName('top')">Команда 1</button>
-        <div class="controls-row">
-            <button class="icon-btn">📽️</button>
-            <button class="icon-btn" onclick="openModal('list', 'top')">📋</button>
-            <button class="zoom-btn" onclick="openModal('setup', 'top')">Z</button>
-            <button class="icon-btn" onclick="rotatePlayers('top', 1)">↺</button>
-            <button class="icon-btn" onclick="rotatePlayers('top', -1)">↻</button>
+<div id="viewport">
+    <div class="control-panel">
+        <div class="side" id="top-side">
+            <button class="team-selector" id="top-name" onclick="editTeamName('top')">Команда 1</button>
+            <div class="controls-row">
+                <button class="icon-btn">📽️</button>
+                <button class="icon-btn" onclick="openModal('list', 'top')">📋</button>
+                <button class="zoom-btn" onclick="openModal('setup', 'top')">Z</button>
+                <button class="icon-btn" onclick="rotatePlayers('top', 1)">↺</button>
+                <button class="icon-btn" onclick="rotatePlayers('top', -1)">↻</button>
+            </div>
+            <div class="field"><div class="field-rows">
+                <div class="row"><button class="player color-blue" onclick="initSub('top', 0)"></button><button class="player color-blue" onclick="initSub('top', 1)"></button><button class="player color-blue" onclick="initSub('top', 2)"></button></div>
+                <div class="row"><button class="player color-blue" onclick="initSub('top', 3)"></button><button class="player color-blue" onclick="initSub('top', 4)"></button><button class="player color-blue" onclick="initSub('top', 5)"></button></div>
+            </div></div>
         </div>
-        <div class="field"><div class="field-rows">
-            <div class="row"><button class="player color-blue" onclick="initSub('top', 0)"></button><button class="player color-blue" onclick="initSub('top', 1)"></button><button class="player color-blue" onclick="initSub('top', 2)"></button></div>
-            <div class="row"><button class="player color-blue" onclick="initSub('top', 3)"></button><button class="player color-blue" onclick="initSub('top', 4)"></button><button class="player color-blue" onclick="initSub('top', 5)"></button></div>
-        </div></div>
-    </div>
-
-    <div class="swap-container"><button class="swap-btn" onclick="swapSides()">⇄</button></div>
-
-    <div class="side" id="bottom-side">
-        <div class="field"><div class="field-rows">
-            <div class="row"><button class="player color-gray" onclick="initSub('bottom', 0)"></button><button class="player color-gray" onclick="initSub('bottom', 1)"></button><button class="player color-gray" onclick="initSub('bottom', 2)"></button></div>
-            <div class="row"><button class="player color-gray" onclick="initSub('bottom', 3)"></button><button class="player color-gray" onclick="initSub('bottom', 4)"></button><button class="player color-gray" onclick="initSub('bottom', 5)"></button></div>
-        </div></div>
-        <div class="controls-row">
-            <button class="icon-btn" onclick="rotatePlayers('bottom', 1)">↺</button>
-            <button class="icon-btn" onclick="rotatePlayers('bottom', -1)">↻</button>
-            <button class="zoom-btn" onclick="openModal('setup', 'bottom')">Z</button>
-            <button class="icon-btn" onclick="openModal('list', 'bottom')">📋</button>
-            <button class="icon-btn">📽️</button>
+        <div class="swap-container"><button class="swap-btn" onclick="swapSides()">⇄</button></div>
+        <div class="side" id="bottom-side">
+            <div class="field"><div class="field-rows">
+                <div class="row"><button class="player color-gray" onclick="initSub('bottom', 0)"></button><button class="player color-gray" onclick="initSub('bottom', 1)"></button><button class="player color-gray" onclick="initSub('bottom', 2)"></button></div>
+                <div class="row"><button class="player color-gray" onclick="initSub('bottom', 3)"></button><button class="player color-gray" onclick="initSub('bottom', 4)"></button><button class="player color-gray" onclick="initSub('bottom', 5)"></button></div>
+            </div></div>
+            <div class="controls-row">
+                <button class="icon-btn" onclick="rotatePlayers('bottom', 1)">↺</button>
+                <button class="icon-btn" onclick="rotatePlayers('bottom', -1)">↻</button>
+                <button class="zoom-btn" onclick="openModal('setup', 'bottom')">Z</button>
+                <button class="icon-btn" onclick="openModal('list', 'bottom')">📋</button>
+                <button class="icon-btn">📽️</button>
+            </div>
+            <button class="team-selector" id="bottom-name" onclick="editTeamName('bottom')">Команда 2</button>
         </div>
-        <button class="team-selector" id="bottom-name" onclick="editTeamName('bottom')">Команда 2</button>
     </div>
 </div>
 
