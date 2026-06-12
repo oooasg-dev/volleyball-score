@@ -1,1 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Волейбольный Веб-Пульт v3.8.5</title>
+  <link rel="apple-touch-icon" href="https://i.ibb.co/cSzhGCgc/icon.png">
+  <style>
+    body { font-family: Arial, sans-serif; background: #d4ebd5; text-align: center; margin: 0; padding: 8px; color: #333; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+    .phone-wrapper { max-width: 420px; margin: 0 auto; }
+    .main-table { background: #b0bec5; border: 3px solid #37474f; border-radius: 8px; padding: 6px; width: 100%; box-sizing: border-box; box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .header-row { display: grid; grid-template-columns: 1.2fr 0.8fr 1.2fr; background: #2e7d32; color: white; padding: 8px 4px; font-weight: bold; font-size: 1rem; border-radius: 4px; align-items: center; margin-bottom: 8px; }
+    .team-block { display: flex; align-items: center; justify-content: center; gap: 4px; overflow: hidden; }
+    .team-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px; }
+    .btn-edit { background: none; border: none; color: #fff; cursor: pointer; font-size: 0.85rem; padding: 2px; opacity: 0.7; }
+    .satz-title { background: #fff; color: #333; padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; display: inline-block;}
+    .stat-row { display: grid; grid-template-columns: 1fr 45px 120px 45px 1fr; align-items: center; background: #eceff1; padding: 4px; margin: 6px 0; border-radius: 4px; gap: 4px; }
+    .btn-action { height: 50px; font-size: 1.4rem; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; padding: 0; width: 100%; }
+    button:active { transform: scale(0.95); }
+    .btn-plus { background-color: #1976d2; }  
+    .val-cell { font-size: 1.2rem; font-weight: bold; color: #1e293b; text-align: center; background: #ffffff; padding: 12px 0; border-radius: 4px; border: 1px solid #b0bec5; }
+    .label-cell { background: #cfd8dc; font-weight: bold; font-size: 0.85rem; color: #37474f; padding: 14px 0; border-radius: 4px; border: 1px solid #b0bec5; text-align: center; text-transform: uppercase; }
+    .punkte-row { display: flex; align-items: center; justify-content: space-between; background: #cfd8dc; font-weight: bold; border: 2px solid #78909c; margin: 8px 0; border-radius: 4px; padding: 4px; }
+    .punkte-label { width: 120px; background: #fff; font-size: 1.1rem; padding: 10px 0; text-transform: uppercase; border-radius: 4px; border: 1px solid #b0bec5; cursor: pointer; transition: background 0.2s; }
+    .punkte-label:active { background: #bbb; }
+    .punkte-val { width: 125px; font-size: 2.2rem; color: #1565c0; font-weight: bold; text-align: center; position: relative;}
+    .serving-dot { position: absolute; top: 4px; font-size: 0.8rem; color: #2e7d32; display: none; }
+    .serve-left { left: 12px; } .serve-right { right: 12px; }
+    .satz-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .satz-btn-block { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 125px; }
+    .satz-val { background: #cfd8dc; font-size: 1.3rem; font-weight: bold; padding: 6px 0; border-radius: 4px; border: 1px solid #78909c; width: 45px; }
+    .history-cell { background: #fff; font-size: 0.85rem; font-weight: bold; padding: 8px 2px; border-radius: 4px; border: 1px solid #78909c; color: #555; width: 120px; min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+    .btn-manual { background: #f57c00; height: 42px; font-size: 1rem; width: 100%; border: none; border-radius: 4px; color: white; font-weight: bold;}
+    .timeline-container { background: #eceff1; border: 2px solid #78909c; border-radius: 6px; margin: 10px 0; padding: 6px; }
+    .timeline-title { font-size: 0.8rem; font-weight: bold; color: #37474f; text-transform: uppercase; margin-bottom: 4px; }
+    .timeline-grid { display: grid; grid-template-columns: repeat(11, 1fr); gap: 2px; margin-top: 3px; }
+    .dot-cell { background: #ffffff; border: 1px solid #b0bec5; height: 18px; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; color: #2e7d32; }
+    .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; margin-top: 8px; }
+    .btn-reset { color: white; height: 46px; font-size: 0.95rem; font-weight: bold; text-transform: uppercase; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-undo { background-color: #607d8b; grid-column: span 2; height: 44px; font-size: 1rem;}
+  </style>
+</head>
+<body>
 
+<div class="phone-wrapper">
+  <div class="main-table">
+    <div class="header-row">
+      <div class="team-block"><span id="t1_name" class="team-title">Team A</span><button class="btn-edit" onclick="editTeam(1)">📝</button></div>
+      <div><span class="satz-title" id="current_set_label">SATZ 1</span></div>
+      <div class="team-block"><span id="t2_name" class="team-title">Team B</span><button class="btn-edit" onclick="editTeam(2)">📝</button></div>
+    </div>
+    <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('ang1', 1)">+1</button><div id="v_ang1" class="val-cell">0</div><div class="label-cell">Angriff</div><div id="v_ang2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('ang2', 2)">+1</button></div>
+    <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('blk1', 1)">+1</button><div id="v_blk1" class="val-cell">0</div><div class="label-cell">Block</div><div id="v_blk2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('blk2', 2)">+1</button></div>
+    <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('ase1', 1)">+1</button><div id="v_ase1" class="val-cell">0</div><div class="label-cell">Asse</div><div id="v_ase2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('ase2', 2)">+1</button></div>
+    <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('fhl1', 2)">+1</button><div id="v_fhl1" class="val-cell">0</div><div class="label-cell">Fehler</div><div id="v_fhl2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('fhl2', 1)">+1</button></div>
+    <div class="punkte-row">
+      <div class="punkte-val"><span class="serving-dot serve-left" id="serve1">●</span><span id="v_pts1">0</span></div>
+      <div class="label-cell punkte-label" onclick="manualSwapServe()">Punkte</div>
+      <div class="punkte-val"><span id="v_pts2">0</span><span class="serving-dot serve-right" id="serve2">●</span></div>
+    </div>
+    <div class="satz-row">
+      <div class="satz-btn-block"><button class="btn-manual" style="background-color: #d32f2f;" onclick="changeSetScore(1, -1)">-1</button><button class="btn-manual" style="background-color: #2e7d32;" onclick="changeSetScore(1, 1)">+1</button></div>
+      <div id="v_set1" class="satz-val">0</div><div id="v_history" class="history-cell">—</div><div id="v_set2" class="satz-val">0</div>
+      <div class="satz-btn-block"><button class="btn-manual" style="background-color: #2e7d32;" onclick="changeSetScore(2, 1)">+1</button><button class="btn-manual" style="background-color: #d32f2f;" onclick="changeSetScore(2, -1)">-1</button></div>
+    </div>
+    <div class="timeline-container"><div class="timeline-title">Spielverlauf</div><div class="timeline-grid" id="row21_container"></div><div class="timeline-grid" id="row22_container" style="margin-top: 4px;"></div></div>
+  </div>
+  <div class="control-panel">
+    <button class="btn-reset btn-undo" onclick="undoAction()">↩ Rückgängig</button>
+    <button class="btn-reset" style="background-color: #78909c;" onclick="resetCurrentSet()">Reset Set</button>
+    <button class="btn-reset" style="background-color: #b71c1c;" onclick="resetAllMatch()">Full Reset</button>
+  </div>
+</div>
+
+<script>
+  const FIREBASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/match.json";
+  const VMIX_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/vmix.json";
+
+  let state = { team1Name: "Team A", team2Name: "Team B", ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, historyStr: "—", serve: 0, timeline: [], finalSetPts1: 0, finalSetPts2: 0 };
+  let historyStack = [];
+  let isSyncing = false;
+
+  function saveHistory() { historyStack.push(JSON.stringify(state)); if (historyStack.length > 20) historyStack.shift(); }
+  
+  function manualSwapServe() {
+      saveHistory();
+      state.serve = (state.serve === 1) ? 2 : 1;
+      state.manualMode = true; 
+      updateUI();
+      sendToFirebase();
+      setTimeout(() => { delete state.manualMode; sendToFirebase(); }, 1000);
+  }
+
+  function createTimelineCells() { 
+    const r21 = document.getElementById('row21_container'); 
+    const r22 = document.getElementById('row22_container'); 
+    r21.innerHTML=''; r22.innerHTML=''; 
+    for (let i = 0; i < 11; i++) {
+      r21.innerHTML += `<div class="dot-cell" id="c_21_${i}"></div>`; 
+      r22.innerHTML += `<div class="dot-cell" id="c_22_${i}"></div>`; 
+    } 
+  }
+  
+  function updateUI() {
+    if (!state) return; 
+    document.getElementById('t1_name').innerText = state.team1Name || "Team A";
+    document.getElementById('t2_name').innerText = state.team2Name || "Team B";
+    document.getElementById('v_ang1').innerText = state.ang1 || 0;
+    document.getElementById('v_ang2').innerText = state.ang2 || 0;
+    document.getElementById('v_blk1').innerText = state.blk1 || 0;
+    document.getElementById('v_blk2').innerText = state.blk2 || 0;
+    document.getElementById('v_ase1').innerText = state.ase1 || 0;
+    document.getElementById('v_ase2').innerText = state.ase2 || 0;
+    document.getElementById('v_fhl1').innerText = state.fhl1 || 0;
+    document.getElementById('v_fhl2').innerText = state.fhl2 || 0;
+    document.getElementById('v_pts1').innerText = state.pts1 || 0;
+    document.getElementById('v_pts2').innerText = state.pts2 || 0;
+    document.getElementById('v_set1').innerText = state.set1 || 0;
+    document.getElementById('v_set2').innerText = state.set2 || 0;
+    document.getElementById('v_history').innerText = state.historyStr || "—";
+    document.getElementById('current_set_label').innerText = "SATZ " + (state.currentSet || 1);
+    document.getElementById('serve1').style.display = state.serve === 1 ? 'block' : 'none';
+    document.getElementById('serve2').style.display = state.serve === 2 ? 'block' : 'none';
+    
+    let lastPoints = (state.timeline || []).slice(-11).reverse();
+    for (let i = 0; i < 11; i++) {
+      let cellA = document.getElementById(`c_21_${i}`);
+      let cellB = document.getElementById(`c_22_${i}`);
+      if (cellA && cellB) {
+        cellA.innerText = lastPoints[i] === 1 ? '●' : '';
+        cellB.innerText = lastPoints[i] === 2 ? '●' : '';
+      }
+    }
+  }
+
+  function getBallStatus() {
+    if (state.set1 >= 3 || state.set2 >= 3) return { sb1: false, mb1: false, sb2: false, mb2: false };
+    let target = state.currentSet === 5 ? 15 : 25;
+    let status = { sb1: false, mb1: false, sb2: false, mb2: false };
+    if (state.pts1 >= target - 1 && state.pts1 > state.pts2) {
+      if (state.set1 === 2) status.mb1 = true; else status.sb1 = true;
+    }
+    if (state.pts2 >= target - 1 && state.pts2 > state.pts1) {
+      if (state.set2 === 2) status.mb2 = true; else status.sb2 = true;
+    }
+    return status;
+  }
+
+  function syncFromFirebase() {
+    if (isSyncing) return;
+    fetch(FIREBASE_URL).then(res => res.json()).then(data => { if (data) { state = data; updateUI(); } });
+  }
+  setInterval(syncFromFirebase, 2000);
+
+  async function sendToFirebase() {
+    isSyncing = true;
+    let lastPoints = (state.timeline || []).slice(-11).reverse();
+    
+    let ballStatus = getBallStatus();
+    let activeBall = "";
+    if (ballStatus.mb1) activeBall = "Matchball1";
+    else if (ballStatus.mb2) activeBall = "Matchball2";
+    else if (ballStatus.sb1) activeBall = "Satzball1";
+    else if (ballStatus.sb2) activeBall = "Satzball2";
+    
+    let vmixData = { 
+      pts1: state.pts1, pts2: state.pts2, set1: state.set1, set2: state.set2, 
+      ang1: state.ang1, ang2: state.ang2, blk1: state.blk1, blk2: state.blk2, 
+      ase1: state.ase1, ase2: state.ase2, fhl1: state.fhl1, fhl2: state.fhl2, 
+      team1Name: state.team1Name, team2Name: state.team2Name, historyStr: state.historyStr,
+      lastFinishedSet: (state.currentSet - 1),
+      serve1: state.serve === 1 ? "●" : "", serve2: state.serve === 2 ? "●" : "",
+      finalSetPts1: state.finalSetPts1 || 0, finalSetPts2: state.finalSetPts2 || 0,
+      activeBallType: activeBall
+    };
+    for (let i = 0; i < 11; i++) {
+      vmixData[`dot_21_${i+1}`] = lastPoints[i] === 1 ? "●" : ""; 
+      vmixData[`dot_22_${i+1}`] = lastPoints[i] === 2 ? "●" : ""; 
+    }
+    await fetch(FIREBASE_URL, { method: "PUT", body: JSON.stringify(state) });
+    await fetch(VMIX_URL, { method: "PUT", body: JSON.stringify([vmixData]) });
+    isSyncing = false;
+  }
+
+  function editTeam(teamNum) { saveHistory(); let name = prompt("Name eingeben:", teamNum === 1 ? state.team1Name : state.team2Name); if (name) { if (teamNum === 1) state.team1Name = name; else state.team2Name = name; updateUI(); sendToFirebase(); } }
+  
+  function clickPlus(statField, team) { 
+    saveHistory(); 
+    state[statField]++; 
+    team === 1 ? state.pts1++ : state.pts2++ ; 
+    state.serve = team; 
+    if (!state.timeline) state.timeline = [];
+    state.timeline.push(team); 
+    checkSetEngine(); 
+    updateUI(); 
+    sendToFirebase(); 
+  }
+  
+  function checkSetEngine() { 
+    let target = state.currentSet === 5 ? 15 : 25; 
+    if ((state.pts1 >= target && (state.pts1 - state.pts2) >= 2) || (state.pts2 >= target && (state.pts2 - state.pts1) >= 2)) { 
+      state.finalSetPts1 = state.pts1; state.finalSetPts2 = state.pts2;
+      state.historyStr = (state.historyStr === "—" ? "" : state.historyStr + ", ") + `${state.pts1}:${state.pts2}`; 
+      state.pts1 > state.pts2 ? state.set1++ : state.set2++; 
+      
+      if (state.set1 < 3 && state.set2 < 3) {
+        state.currentSet++; state.pts1 = 0; state.pts2 = 0; state.timeline = []; 
+      }
+    } 
+  }
+  
+  function changeSetScore(t, v) { saveHistory(); t === 1 ? state.set1 = Math.max(0, state.set1 + v) : state.set2 = Math.max(0, state.set2 + v); updateUI(); sendToFirebase(); }
+  
+  function undoAction() { 
+    if (historyStack.length > 0) { 
+      state = JSON.parse(historyStack.pop()); 
+      updateUI(); 
+      state.isUndo = true; 
+      sendToFirebase(); 
+      setTimeout(() => { delete state.isUndo; sendToFirebase(); }, 500); 
+    } 
+  }
+  
+  function resetCurrentSet() { 
+    if (confirm("Satz zurücksetzen?")) { 
+      saveHistory(); 
+      state.ang1 = 0; state.ang2 = 0; 
+      state.blk1 = 0; state.blk2 = 0; 
+      state.ase1 = 0; state.ase2 = 0; 
+      state.fhl1 = 0; state.fhl2 = 0; 
+      state.pts1 = 0; state.pts2 = 0; 
+      state.timeline = []; 
+      state.finalSetPts1 = 0; 
+      state.finalSetPts2 = 0;
+      updateUI(); 
+      sendToFirebase();
+    } 
+  }
+  
+  function resetAllMatch() { 
+    if (confirm("Alles komplett zurücksetzen?")) { 
+      state = { 
+        team1Name: state.team1Name, team2Name: state.team2Name, 
+        ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, 
+        pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, 
+        historyStr: "—", serve: 0, timeline: [], 
+        finalSetPts1: 0, finalSetPts2: 0 
+      };
+      historyStack = []; 
+      updateUI();
+      sendToFirebase();
+    } 
+  }
+
+  createTimelineCells(); updateUI();
+</script>
+</body>
+</html>
