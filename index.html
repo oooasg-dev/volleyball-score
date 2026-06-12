@@ -21,7 +21,8 @@
     .val-cell { font-size: 1.2rem; font-weight: bold; color: #1e293b; text-align: center; background: #ffffff; padding: 12px 0; border-radius: 4px; border: 1px solid #b0bec5; }
     .label-cell { background: #cfd8dc; font-weight: bold; font-size: 0.85rem; color: #37474f; padding: 14px 0; border-radius: 4px; border: 1px solid #b0bec5; text-align: center; text-transform: uppercase; }
     .punkte-row { display: flex; align-items: center; justify-content: space-between; background: #cfd8dc; font-weight: bold; border: 2px solid #78909c; margin: 8px 0; border-radius: 4px; padding: 4px; }
-    .punkte-label { width: 120px; background: #fff; font-size: 1.1rem; padding: 10px 0; text-transform: uppercase; border-radius: 4px; border: 1px solid #b0bec5; }
+    .punkte-label { width: 120px; background: #fff; font-size: 1.1rem; padding: 10px 0; text-transform: uppercase; border-radius: 4px; border: 1px solid #b0bec5; cursor: pointer; transition: background 0.2s; }
+    .punkte-label:active { background: #bbb; }
     .punkte-val { width: 125px; font-size: 2.2rem; color: #1565c0; font-weight: bold; text-align: center; position: relative;}
     .serving-dot { position: absolute; top: 4px; font-size: 0.8rem; color: #2e7d32; display: none; }
     .serve-left { left: 12px; } .serve-right { right: 12px; }
@@ -54,7 +55,7 @@
     <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('fhl1', 2)">+1</button><div id="v_fhl1" class="val-cell">0</div><div class="label-cell">Fehler</div><div id="v_fhl2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('fhl2', 1)">+1</button></div>
     <div class="punkte-row">
       <div class="punkte-val"><span class="serving-dot serve-left" id="serve1">●</span><span id="v_pts1">0</span></div>
-      <div class="label-cell punkte-label">Punkte</div>
+      <div class="label-cell punkte-label" onclick="manualSwapServe()">Punkte</div>
       <div class="punkte-val"><span id="v_pts2">0</span><span class="serving-dot serve-right" id="serve2">●</span></div>
     </div>
     <div class="satz-row">
@@ -81,6 +82,15 @@
 
   function saveHistory() { historyStack.push(JSON.stringify(state)); if (historyStack.length > 20) historyStack.shift(); }
   
+  function manualSwapServe() {
+      saveHistory();
+      state.serve = (state.serve === 1) ? 2 : 1;
+      state.manualMode = true; 
+      updateUI();
+      sendToFirebase();
+      setTimeout(() => { delete state.manualMode; sendToFirebase(); }, 1000);
+  }
+
   function createTimelineCells() { 
     const r21 = document.getElementById('row21_container'); 
     const r22 = document.getElementById('row22_container'); 
@@ -200,7 +210,16 @@
   }
   
   function changeSetScore(t, v) { saveHistory(); t === 1 ? state.set1 = Math.max(0, state.set1 + v) : state.set2 = Math.max(0, state.set2 + v); updateUI(); sendToFirebase(); }
-  function undoAction() { if (historyStack.length > 0) { state = JSON.parse(historyStack.pop()); updateUI(); sendToFirebase(); } }
+  
+  function undoAction() { 
+    if (historyStack.length > 0) { 
+      state = JSON.parse(historyStack.pop()); 
+      updateUI(); 
+      state.isUndo = true; 
+      sendToFirebase(); 
+      setTimeout(() => { delete state.isUndo; sendToFirebase(); }, 500); 
+    } 
+  }
   
   function resetCurrentSet() { 
     if (confirm("Satz zurücksetzen?")) { 
