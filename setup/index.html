@@ -6,10 +6,26 @@
     <title>Волейбольный пульт (Расстановка)</title>
     <style>
         body { 
-            font-family: sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; background-color: #f0f0f0; overflow-x: hidden;
-            touch-action: manipulation; -webkit-user-select: none; user-select: none;
+            font-family: sans-serif; 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-start; 
+            min-height: 100vh; 
+            margin: 0; 
+            background-color: #f0f0f0; 
+            overflow-x: hidden; /* Убирает горизонтальный скролл */
+            touch-action: manipulation; 
+            -webkit-user-select: none; 
+            user-select: none;
         }
-        #viewport { width: 340px; transform-origin: top center; transform: scale(1.23); padding: 10px; }
+        
+        #viewport { 
+            width: 340px; 
+            transform-origin: top center; 
+            transform: scale(1.2); /* Масштаб 1.2 дает идеальную ширину 408px */
+            padding: 10px; 
+            box-sizing: border-box;
+        }
         
         .control-panel { display: flex; flex-direction: column; gap: 10px; }
         .side { background-color: #f8fff6; border: 2px solid #a8cfa3; padding: 12px; border-radius: 15px; position: relative; }
@@ -24,7 +40,8 @@
         .player { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 22px; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .color-blue { background-color: #008cc9; }
         .color-gray { background-color: #6e6e6e; }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; }
+        
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; width: 280px; }
         .bench-item { cursor: pointer; padding: 10px; border-bottom: 1px solid #ddd; }
     </style>
 </head>
@@ -46,7 +63,9 @@
                 <div class="row"><button class="player color-blue" onclick="initSub('top', 3)"></button><button class="player color-blue" onclick="initSub('top', 4)"></button><button class="player color-blue" onclick="initSub('top', 5)"></button></div>
             </div></div>
         </div>
+        
         <div class="swap-container"><button class="swap-btn" onclick="swapSides()">⇄</button></div>
+        
         <div class="side" id="bottom-side">
             <div class="field"><div class="field-rows">
                 <div class="row"><button class="player color-gray" onclick="initSub('bottom', 0)"></button><button class="player color-gray" onclick="initSub('bottom', 1)"></button><button class="player color-gray" onclick="initSub('bottom', 2)"></button></div>
@@ -64,8 +83,8 @@
     </div>
 </div>
 
-<div id="list-modal" class="modal"><h3 id="list-title">Список</h3><textarea id="listInput" style="width:250px; height:100px;"></textarea><br><button onclick="saveList()">Сохранить</button></div>
-<div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:250px; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
+<div id="list-modal" class="modal"><h3 id="list-title">Список</h3><textarea id="listInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveList()">Сохранить</button></div>
+<div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
 <div id="sub-modal" class="modal"><h3>Замена</h3><div id="bench-list"></div><br><button onclick="closeModal('sub')">Отмена</button></div>
 
 <script>
