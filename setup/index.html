@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aufstellung</title>
+    <title>Волейбольный пульт (Полный)</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; background-color: #f0f0f0; overflow-x: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
         #viewport { width: 340px; transform-origin: top center; transform: scale(1.2); padding: 10px; box-sizing: border-box; }
@@ -285,8 +285,10 @@
         const lines = text.split('\n').filter(l => l.trim() !== "");
         let zIndex = -1;
         
+        // Сначала сохраним текущих игроков с поля, чтобы не потерять имена
         const currentPlayers = [...teamState[currentSide].onField];
         
+        // Разбираем введенные номера
         const inputData = lines.map((line, i) => {
             const parts = line.split(',').map(s => s.trim());
             const hasZ = parts.includes('Z');
