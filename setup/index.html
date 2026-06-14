@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Волейбольный пульт (Расстановка)</title>
+    <title>Aufstellung</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; background-color: #f0f0f0; overflow-x: hidden; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
         #viewport { width: 340px; transform-origin: top center; transform: scale(1.2); padding: 10px; box-sizing: border-box; }
@@ -21,7 +21,7 @@
         .color-blue { background-color: #008cc9; }
         .color-gray { background-color: #6e6e6e; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; width: 280px; }
-        .bench-item { cursor: pointer; padding: 10px; border-bottom: 1px solid #ddd; }
+        .bench-item { cursor: pointer; padding: 12px; border-bottom: 1px solid #ddd; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -31,7 +31,7 @@
         <div class="side" id="top-side">
             <button class="team-selector" id="top-name" onclick="editTeamName('top')">Команда 1</button>
             <div class="controls-row">
-                <button class="icon-btn">📽️</button>
+                <button class="icon-btn" onclick="openCasterModal('top')">📽️</button>
                 <button class="icon-btn" onclick="openModal('list', 'top')">📋</button>
                 <button class="zoom-btn" onclick="openModal('setup', 'top')">Z</button>
                 <button class="icon-btn" onclick="rotatePlayers('top', 1)">↺</button>
@@ -55,7 +55,7 @@
                 <button class="icon-btn" onclick="rotatePlayers('bottom', -1)">↻</button>
                 <button class="zoom-btn" onclick="openModal('setup', 'bottom')">Z</button>
                 <button class="icon-btn" onclick="openModal('list', 'bottom')">📋</button>
-                <button class="icon-btn">📽️</button>
+                <button class="icon-btn" onclick="openCasterModal('bottom')">📽️</button>
             </div>
             <button class="team-selector" id="bottom-name" onclick="editTeamName('bottom')">Команда 2</button>
         </div>
@@ -66,15 +66,29 @@
 <div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
 <div id="sub-modal" class="modal"><h3>Замена</h3><div id="bench-list"></div><br><button onclick="closeModal('sub')">Отмена</button></div>
 
+<div id="caster-modal" class="modal">
+    <h3 id="caster-title">Выбор для титра</h3>
+    <div id="caster-list-view"></div>
+    <div id="caster-edit-view" style="display:none;">
+        <textarea id="casterInput" style="width:100%; height:100px;"></textarea>
+    </div>
+    <br>
+    <button onclick="toggleCasterEdit()" id="edit-btn">✏️ Ред.</button>
+    <button onclick="saveCasterList()" id="save-btn" style="display:none;">💾 Сохр.</button>
+    <button onclick="closeModal('caster')">Закрыть</button>
+</div>
+
 <script>
     let homeSide = 'top'; 
     let currentSide = '';
     let lastServe = 0; 
+    let topPresenter = { name: "-", role: "-" };
+    let bottomPresenter = { name: "-", role: "-" };
     const roleOrder = ["Zuspieler", "Aussenangriff", "Mittelblock", "Diagonal", "Aussenangriff", "Mittelblock"];
 
     const teamState = {
-        top: { name: "Команда 1", roster: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] },
-        bottom: { name: "Команда 2", roster: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] }
+        top: { name: "Команда 1", roster: [], staff: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] },
+        bottom: { name: "Команда 2", roster: [], staff: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] }
     };
     const topMap = [0, 5, 4, 1, 2, 3]; 
     const bottomMap = [3, 2, 1, 4, 5, 0]; 
@@ -112,6 +126,10 @@
         const homeData = teamState[homeSide];
         const awaySide = (homeSide === 'top') ? 'bottom' : 'top';
         const awayData = teamState[awaySide];
+        
+        const hPres = (homeSide === 'top') ? topPresenter : bottomPresenter;
+        const aPres = (homeSide === 'top') ? bottomPresenter : topPresenter;
+
         const serverData = [{
             home_num: homeData.onField[0].num || "-",
             home_name: homeData.onField[0].name || "-",
@@ -119,24 +137,79 @@
             away_num: awayData.onField[0].num || "-",
             away_name: awayData.onField[0].name || "-",
             away_role: awayData.onField[0].role || "-",
-            heim_wechs_in_Name1: homeData.historySubs[0].in.name,
+            
+            home_presenter_name: hPres.name,
+            home_presenter_role: hPres.role,
+            away_presenter_name: aPres.name,
+            away_presenter_role: aPres.role,
+            
+            heim_wechs_in_Name1: homeData.historySubs[0].in.num + " " + homeData.historySubs[0].in.name,
             heim_wechs_in_Num1: homeData.historySubs[0].in.num,
-            heim_wechs_aus_Name1: homeData.historySubs[0].out.name,
+            heim_wechs_aus_Name1: homeData.historySubs[0].out.num + " " + homeData.historySubs[0].out.name,
             heim_wechs_aus_Num1: homeData.historySubs[0].out.num,
-            heim_wechs_in_Name2: homeData.historySubs[1].in.name,
+            heim_wechs_in_Name2: homeData.historySubs[1].in.num + " " + homeData.historySubs[1].in.name,
             heim_wechs_in_Num2: homeData.historySubs[1].in.num,
-            heim_wechs_aus_Name2: homeData.historySubs[1].out.name,
+            heim_wechs_aus_Name2: homeData.historySubs[1].out.num + " " + homeData.historySubs[1].out.name,
             heim_wechs_aus_Num2: homeData.historySubs[1].out.num,
-            gast_wechs_in_Name1: awayData.historySubs[0].in.name,
+            gast_wechs_in_Name1: awayData.historySubs[0].in.num + " " + awayData.historySubs[0].in.name,
             gast_wechs_in_Num1: awayData.historySubs[0].in.num,
-            gast_wechs_aus_Name1: awayData.historySubs[0].out.name,
+            gast_wechs_aus_Name1: awayData.historySubs[0].out.num + " " + awayData.historySubs[0].out.name,
             gast_wechs_aus_Num1: awayData.historySubs[0].out.num,
-            gast_wechs_in_Name2: awayData.historySubs[1].in.name,
+            gast_wechs_in_Name2: awayData.historySubs[1].in.num + " " + awayData.historySubs[1].in.name,
             gast_wechs_in_Num2: awayData.historySubs[1].in.num,
-            gast_wechs_aus_Name2: awayData.historySubs[1].out.name,
+            gast_wechs_aus_Name2: awayData.historySubs[1].out.num + " " + awayData.historySubs[1].out.name,
             gast_wechs_aus_Num2: awayData.historySubs[1].out.num
         }];
         try { await fetch("https://volleyplayers-default-rtdb.europe-west1.firebasedatabase.app/vmix.json", { method: "PUT", body: JSON.stringify(serverData) }); } catch (e) { console.error("Ошибка:", e); }
+    }
+
+    function openCasterModal(side) {
+        currentSide = side;
+        renderCasterButtons();
+        document.getElementById('caster-modal').style.display = 'block';
+    }
+
+    function toggleCasterEdit() {
+        const view = document.getElementById('caster-list-view');
+        const edit = document.getElementById('caster-edit-view');
+        if (edit.style.display === 'none') {
+            view.style.display = 'none';
+            edit.style.display = 'block';
+            document.getElementById('edit-btn').style.display = 'none';
+            document.getElementById('save-btn').style.display = 'inline-block';
+            document.getElementById('casterInput').value = teamState[currentSide].staff.map(p => `${p.name}, ${p.role}`).join('\n');
+        } else {
+            view.style.display = 'block';
+            edit.style.display = 'none';
+            document.getElementById('edit-btn').style.display = 'inline-block';
+            document.getElementById('save-btn').style.display = 'none';
+        }
+    }
+
+    function saveCasterList() {
+        const text = document.getElementById('casterInput').value;
+        teamState[currentSide].staff = text.split('\n').filter(l => l.trim() !== "").map(l => {
+            const [name, role] = l.split(',');
+            return { name: (name || "").trim(), role: (role || "").trim() };
+        });
+        toggleCasterEdit();
+        renderCasterButtons();
+    }
+
+    function renderCasterButtons() {
+        const view = document.getElementById('caster-list-view');
+        view.innerHTML = '';
+        teamState[currentSide].staff.forEach(person => {
+            const d = document.createElement('div');
+            d.className = 'bench-item';
+            d.innerText = `${person.name} (${person.role})`;
+            d.onclick = () => {
+                if (currentSide === 'top') topPresenter = person; else bottomPresenter = person;
+                pushServerToFirebase();
+                closeModal('caster');
+            };
+            view.appendChild(d);
+        });
     }
 
     function updateHighlight(serveValue) {
@@ -159,6 +232,7 @@
         btns.forEach((btn, i) => { 
             const p = teamState[side].onField[map[i]]; 
             btn.innerText = p.num; 
+            // Подсказка только ФИО и роль в скобках
             btn.title = p.name + (p.role ? " (" + p.role + ")" : ""); 
             btn.style.outline = (p.role === "Zuspieler") ? "2px solid white" : "none";
             btn.style.outlineOffset = "-2px";
@@ -189,32 +263,57 @@
         document.getElementById('sub-modal').style.display = 'block'; 
     }
     
-    function swapSides() { homeSide = (homeSide === 'top') ? 'bottom' : 'top'; [teamState.top, teamState.bottom] = [teamState.bottom, teamState.top]; document.getElementById('top-name').innerText = teamState.top.name; document.getElementById('bottom-name').innerText = teamState.bottom.name; document.querySelectorAll('.player').forEach(p => { p.classList.toggle('color-blue'); p.classList.toggle('color-gray'); }); updateFieldDisplay('top'); updateFieldDisplay('bottom'); pushServerToFirebase(); }
+    function swapSides() { 
+        homeSide = (homeSide === 'top') ? 'bottom' : 'top'; 
+        [teamState.top, teamState.bottom] = [teamState.bottom, teamState.top];
+        [topPresenter, bottomPresenter] = [bottomPresenter, topPresenter];
+        document.getElementById('top-name').innerText = teamState.top.name; 
+        document.getElementById('bottom-name').innerText = teamState.bottom.name; 
+        document.querySelectorAll('.player').forEach(p => { p.classList.toggle('color-blue'); p.classList.toggle('color-gray'); }); 
+        updateFieldDisplay('top'); 
+        updateFieldDisplay('bottom'); 
+        pushServerToFirebase(); 
+    }
+
     function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; } }
     function openModal(type, side) { currentSide = side; document.getElementById(type + '-title').innerText = teamState[side].name; if (type === 'list') document.getElementById('listInput').value = teamState[side].roster.map(p => `${p.num}, ${p.name}`).join('\n'); else if (type === 'setup') document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}${p.role === 'Zuspieler' ? ', Z' : ''}` : '').join('\n'); document.getElementById(type == 'setup' ? 'setup-modal' : 'list-modal').style.display = 'block'; }
-    function closeModal(type) { document.getElementById(type + '-modal').style.display = 'none'; }
+    function closeModal(type) { document.getElementById(type + '-modal').style.display = 'none'; document.getElementById('caster-modal').style.display = 'none'; }
     function saveList() { const text = document.getElementById('listInput').value; teamState[currentSide].roster = text.split('\n').filter(l => l.trim() !== "").map(l => { const [num, ...name] = l.split(','); return { num: num.trim(), name: name.join(',').trim() }; }); closeModal('list'); }
     
     function saveSetup() {
         const text = document.getElementById('setupInput').value;
         const lines = text.split('\n').filter(l => l.trim() !== "");
         let zIndex = -1;
+        
+        const currentPlayers = [...teamState[currentSide].onField];
+        
         const inputData = lines.map((line, i) => {
             const parts = line.split(',').map(s => s.trim());
             const hasZ = parts.includes('Z');
             if (hasZ) zIndex = i;
             return { num: parts[0], hasZ };
         });
+
         teamState[currentSide].onField = Array(6).fill({num: '', name: '', role: ''});
+        
         inputData.forEach((data, i) => {
-            const found = teamState[currentSide].roster.find(p => p.num === data.num);
+            // 1. Ищем в списке команды (roster)
+            const fromRoster = teamState[currentSide].roster.find(p => p.num === data.num);
+            // 2. Ищем на поле (чтобы подхватить уже введенное имя)
+            const fromField = currentPlayers.find(p => p.num === data.num);
+            
+            const finalName = fromRoster ? fromRoster.name : (fromField ? fromField.name : "");
+            
             teamState[currentSide].onField[i] = {
                 num: data.num,
-                name: found ? found.name : "",
+                name: finalName,
                 role: zIndex !== -1 ? roleOrder[(i - zIndex + 6) % 6] : ""
             };
         });
-        updateFieldDisplay(currentSide); closeModal('setup'); pushServerToFirebase();
+        
+        updateFieldDisplay(currentSide); 
+        closeModal('setup'); 
+        pushServerToFirebase();
     }
 </script>
 </body>
