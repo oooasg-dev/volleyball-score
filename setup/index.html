@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Aufstellung</title>
     <link rel="apple-touch-icon" href="https://i.ibb.co/C58vq63b/image-2a23c5.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/C58vq63b/image-2a23c5.png">
     <link rel="shortcut icon" href="https://i.ibb.co/C58vq63b/image-2a23c5.png" type="image/png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -47,7 +46,7 @@
                 <div class="row"><button class="player color-blue" onclick="initSub('top', 3)"></button><button class="player color-blue" onclick="initSub('top', 4)"></button><button class="player color-blue" onclick="initSub('top', 5)"></button></div>
             </div></div>
         </div>
-       
+        
         <div class="swap-container"><button class="swap-btn" onclick="swapSides()">⇄</button></div>
         
         <div class="side" id="bottom-side">
@@ -87,9 +86,10 @@
     let homeSide = 'top'; 
     let currentSide = '';
     let lastServe = 0; 
-    let topPresenter = { name: "-", role: "-" };
-    let bottomPresenter = { name: "-", role: "-" };
+    let topPresenter = { num: "-", name: "-", role: "-" };
+    let bottomPresenter = { num: "-", name: "-", role: "-" };
     const roleOrder = ["Zuspieler", "Aussenangriff", "Mittelblock", "Diagonal", "Aussenangriff", "Mittelblock"];
+    let isSyncing = false;
 
     const teamState = {
         top: { name: "Команда 1", roster: [], staff: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] },
@@ -98,120 +98,157 @@
     const topMap = [0, 5, 4, 1, 2, 3]; 
     const bottomMap = [3, 2, 1, 4, 5, 0]; 
 
+    async function pushServerToFirebase() {
+        const syncData = { state: teamState, homeSide: homeSide };
+        try {
+            await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/full_state.json", { method: "PUT", body: JSON.stringify(syncData) });
+        } catch (e) { console.error("Ошибка Firebase:", e); }
+
+        const homeData = teamState[homeSide];
+        const awaySide = (homeSide === 'top') ? 'bottom' : 'top';
+        const awayData = teamState[awaySide];
+        const hPres = (homeSide === 'top') ? topPresenter : bottomPresenter;
+        const aPres = (homeSide === 'top') ? bottomPresenter : topPresenter;
+
+        const homeList = [...homeData.roster, ...homeData.staff];
+        const awayList = [...awayData.roster, ...awayData.staff];
+
+        let vmixObj = {
+            serve_heim_num: homeData.onField[0].num || "-", serve_heim_name: homeData.onField[0].name || "-", serve_heim_role: homeData.onField[0].role || "-",
+            serve_gast_num: awayData.onField[0].num || "-", serve_gast_name: awayData.onField[0].name || "-", serve_gast_role: awayData.onField[0].role || "-",
+            home_presenter_num: hPres.num || "-", home_presenter_name: hPres.name || "-", home_presenter_role: hPres.role || "-",
+            away_presenter_num: aPres.num || "-", away_presenter_name: aPres.name || "-", away_presenter_role: aPres.role || "-",
+            
+            heim_wechs_in_Name1: homeData.historySubs[0].in.num + " " + homeData.historySubs[0].in.name, heim_wechs_in_Num1: homeData.historySubs[0].in.num,
+            heim_wechs_aus_Name1: homeData.historySubs[0].out.num + " " + homeData.historySubs[0].out.name, heim_wechs_aus_Num1: homeData.historySubs[0].out.num,
+            heim_wechs_in_Name2: homeData.historySubs[1].in.num + " " + homeData.historySubs[1].in.name, heim_wechs_in_Num2: homeData.historySubs[1].in.num,
+            heim_wechs_aus_Name2: homeData.historySubs[1].out.num + " " + homeData.historySubs[1].out.name, heim_wechs_aus_Num2: homeData.historySubs[1].out.num,
+            gast_wechs_in_Name1: awayData.historySubs[0].in.num + " " + awayData.historySubs[0].in.name, gast_wechs_in_Num1: awayData.historySubs[0].in.num,
+            gast_wechs_aus_Name1: awayData.historySubs[0].out.num + " " + awayData.historySubs[0].out.name, gast_wechs_aus_Num1: awayData.historySubs[0].out.num,
+            gast_wechs_in_Name2: awayData.historySubs[1].in.num + " " + awayData.historySubs[1].in.name, gast_wechs_in_Num2: awayData.historySubs[1].in.num,
+            gast_wechs_aus_Name2: awayData.historySubs[1].out.num + " " + awayData.historySubs[1].out.name, gast_wechs_aus_Num2: awayData.historySubs[1].out.num,
+
+            aufst_heim_num1: homeData.onField[0]?.num || "-", aufst_heim_name1: homeData.onField[0]?.name || "-",
+            aufst_heim_num2: homeData.onField[1]?.num || "-", aufst_heim_name2: homeData.onField[1]?.name || "-",
+            aufst_heim_num3: homeData.onField[2]?.num || "-", aufst_heim_name3: homeData.onField[2]?.name || "-",
+            aufst_heim_num4: homeData.onField[3]?.num || "-", aufst_heim_name4: homeData.onField[3]?.name || "-",
+            aufst_heim_num5: homeData.onField[4]?.num || "-", aufst_heim_name5: homeData.onField[4]?.name || "-",
+            aufst_heim_num6: homeData.onField[5]?.num || "-", aufst_heim_name6: homeData.onField[5]?.name || "-",
+            aufst_gast_num1: awayData.onField[0]?.num || "-", aufst_gast_name1: awayData.onField[0]?.name || "-",
+            aufst_gast_num2: awayData.onField[1]?.num || "-", aufst_gast_name2: awayData.onField[1]?.name || "-",
+            aufst_gast_num3: awayData.onField[2]?.num || "-", aufst_gast_name3: awayData.onField[2]?.name || "-",
+            aufst_gast_num4: awayData.onField[3]?.num || "-", aufst_gast_name4: awayData.onField[3]?.name || "-",
+            aufst_gast_num5: awayData.onField[4]?.num || "-", aufst_gast_name5: awayData.onField[4]?.name || "-",
+            aufst_gast_num6: awayData.onField[5]?.num || "-", aufst_gast_name6: awayData.onField[5]?.name || "-",
+
+            liste_heim_num1: homeList[0]?.num || "-", liste_heim_name1: homeList[0]?.name || "-",
+            liste_heim_num2: homeList[1]?.num || "-", liste_heim_name2: homeList[1]?.name || "-",
+            liste_heim_num3: homeList[2]?.num || "-", liste_heim_name3: homeList[2]?.name || "-",
+            liste_heim_num4: homeList[3]?.num || "-", liste_heim_name4: homeList[3]?.name || "-",
+            liste_heim_num5: homeList[4]?.num || "-", liste_heim_name5: homeList[4]?.name || "-",
+            liste_heim_num6: homeList[5]?.num || "-", liste_heim_name6: homeList[5]?.name || "-",
+            liste_heim_num7: homeList[6]?.num || "-", liste_heim_name7: homeList[6]?.name || "-",
+            liste_heim_num8: homeList[7]?.num || "-", liste_heim_name8: homeList[7]?.name || "-",
+            liste_heim_num9: homeList[8]?.num || "-", liste_heim_name9: homeList[8]?.name || "-",
+            liste_heim_num10: homeList[9]?.num || "-", liste_heim_name10: homeList[9]?.name || "-",
+            liste_heim_num11: homeList[10]?.num || "-", liste_heim_name11: homeList[10]?.name || "-",
+            liste_heim_num12: homeList[11]?.num || "-", liste_heim_name12: homeList[11]?.name || "-",
+            liste_heim_num13: homeList[12]?.num || "-", liste_heim_name13: homeList[12]?.name || "-",
+            liste_heim_num14: homeList[13]?.num || "-", liste_heim_name14: homeList[13]?.name || "-",
+            liste_heim_num15: homeList[14]?.num || "-", liste_heim_name15: homeList[14]?.name || "-",
+
+            liste_gast_num1: awayList[0]?.num || "-", liste_gast_name1: awayList[0]?.name || "-",
+            liste_gast_num2: awayList[1]?.num || "-", liste_gast_name2: awayList[1]?.name || "-",
+            liste_gast_num3: awayList[2]?.num || "-", liste_gast_name3: awayList[2]?.name || "-",
+            liste_gast_num4: awayList[3]?.num || "-", liste_gast_name4: awayList[3]?.name || "-",
+            liste_gast_num5: awayList[4]?.num || "-", liste_gast_name5: awayList[4]?.name || "-",
+            liste_gast_num6: awayList[5]?.num || "-", liste_gast_name6: awayList[5]?.name || "-",
+            liste_gast_num7: awayList[6]?.num || "-", liste_gast_name7: awayList[6]?.name || "-",
+            liste_gast_num8: awayList[7]?.num || "-", liste_gast_name8: awayList[7]?.name || "-",
+            liste_gast_num9: awayList[8]?.num || "-", liste_gast_name9: awayList[8]?.name || "-",
+            liste_gast_num10: awayList[9]?.num || "-", liste_gast_name10: awayList[9]?.name || "-",
+            liste_gast_num11: awayList[10]?.num || "-", liste_gast_name11: awayList[10]?.name || "-",
+            liste_gast_num12: awayList[11]?.num || "-", liste_gast_name12: awayList[11]?.name || "-",
+            liste_gast_num13: awayList[12]?.num || "-", liste_gast_name13: awayList[12]?.name || "-",
+            liste_gast_num14: awayList[13]?.num || "-", liste_gast_name14: awayList[13]?.name || "-",
+            liste_gast_num15: awayList[14]?.num || "-", liste_gast_name15: awayList[14]?.name || "-"
+        };
+
+        try { 
+            await fetch("https://volleyplayers-default-rtdb.europe-west1.firebasedatabase.app/vmix.json", { 
+                method: "PUT", 
+                body: JSON.stringify([vmixObj]) 
+            }); 
+        } catch (e) { console.error("Ошибка:", e); }
+    }
+
     async function syncServeStatus() {
         try {
             const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/match.json");
             const data = await response.json();
             if (!data) return;
-            if (!window.lastProcessedUndo) window.lastProcessedUndo = { exists: false };
-            if (data.isUndo === true) {
-                if (!window.lastProcessedUndo.exists) {
-                    if (data.serve !== lastServe) {
-                        let sideToRotate = (lastServe === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
-                        rotatePlayers(sideToRotate, 1); 
-                    }
-                    window.lastProcessedUndo.exists = true;
-                }
-                lastServe = data.serve;
-                updateHighlight(data.serve);
-                return;
-            } else { window.lastProcessedUndo.exists = false; }
-            if (data.manualMode === true) { lastServe = data.serve; updateHighlight(data.serve); return; }
+            if (data.serve !== undefined) { updateHighlight(data.serve); }
             if (lastServe !== 0 && lastServe !== data.serve) {
                 let sideToRotate = (data.serve === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
                 rotatePlayers(sideToRotate, -1);
             }
             lastServe = data.serve;
-            updateHighlight(data.serve);
-        } catch (e) { console.error("Ошибка Firebase:", e); }
+        } catch (e) { console.error("Ошибка синхронизации:", e); }
     }
     setInterval(syncServeStatus, 1500);
-
-    async function pushServerToFirebase() {
-        const homeData = teamState[homeSide];
-        const awaySide = (homeSide === 'top') ? 'bottom' : 'top';
-        const awayData = teamState[awaySide];
         
-        const hPres = (homeSide === 'top') ? topPresenter : bottomPresenter;
-        const aPres = (homeSide === 'top') ? bottomPresenter : topPresenter;
-
-        const serverData = [{
-            home_num: homeData.onField[0].num || "-",
-            home_name: homeData.onField[0].name || "-",
-            home_role: homeData.onField[0].role || "-",
-            away_num: awayData.onField[0].num || "-",
-            away_name: awayData.onField[0].name || "-",
-            away_role: awayData.onField[0].role || "-",
-            
-            home_presenter_name: hPres.name,
-            home_presenter_role: hPres.role,
-            away_presenter_name: aPres.name,
-            away_presenter_role: aPres.role,
-            
-            heim_wechs_in_Name1: homeData.historySubs[0].in.num + " " + homeData.historySubs[0].in.name,
-            heim_wechs_in_Num1: homeData.historySubs[0].in.num,
-            heim_wechs_aus_Name1: homeData.historySubs[0].out.num + " " + homeData.historySubs[0].out.name,
-            heim_wechs_aus_Num1: homeData.historySubs[0].out.num,
-            heim_wechs_in_Name2: homeData.historySubs[1].in.num + " " + homeData.historySubs[1].in.name,
-            heim_wechs_in_Num2: homeData.historySubs[1].in.num,
-            heim_wechs_aus_Name2: homeData.historySubs[1].out.num + " " + homeData.historySubs[1].out.name,
-            heim_wechs_aus_Num2: homeData.historySubs[1].out.num,
-            gast_wechs_in_Name1: awayData.historySubs[0].in.num + " " + awayData.historySubs[0].in.name,
-            gast_wechs_in_Num1: awayData.historySubs[0].in.num,
-            gast_wechs_aus_Name1: awayData.historySubs[0].out.num + " " + awayData.historySubs[0].out.name,
-            gast_wechs_aus_Num1: awayData.historySubs[0].out.num,
-            gast_wechs_in_Name2: awayData.historySubs[1].in.num + " " + awayData.historySubs[1].in.name,
-            gast_wechs_in_Num2: awayData.historySubs[1].in.num,
-            gast_wechs_aus_Name2: awayData.historySubs[1].out.num + " " + awayData.historySubs[1].out.name,
-            gast_wechs_aus_Num2: awayData.historySubs[1].out.num
-        }];
-        try { await fetch("https://volleyplayers-default-rtdb.europe-west1.firebasedatabase.app/vmix.json", { method: "PUT", body: JSON.stringify(serverData) }); } catch (e) { console.error("Ошибка:", e); }
+    function openCasterModal(side) { 
+        currentSide = side; 
+        renderCasterButtons(); 
+        document.getElementById('caster-list-view').style.display = 'block';
+        document.getElementById('caster-edit-view').style.display = 'none';
+        document.getElementById('edit-btn').style.display = 'inline-block';
+        document.getElementById('save-btn').style.display = 'none';
+        document.getElementById('caster-modal').style.display = 'block'; 
     }
-
-    function openCasterModal(side) {
-        currentSide = side;
-        renderCasterButtons();
-        document.getElementById('caster-modal').style.display = 'block';
-    }
-
+    
     function toggleCasterEdit() {
         const view = document.getElementById('caster-list-view');
         const edit = document.getElementById('caster-edit-view');
         if (edit.style.display === 'none') {
-            view.style.display = 'none';
-            edit.style.display = 'block';
-            document.getElementById('edit-btn').style.display = 'none';
+            view.style.display = 'none'; 
+            edit.style.display = 'block'; 
+            document.getElementById('edit-btn').style.display = 'none'; 
             document.getElementById('save-btn').style.display = 'inline-block';
-            document.getElementById('casterInput').value = teamState[currentSide].staff.map(p => `${p.name}, ${p.role}`).join('\n');
+            document.getElementById('casterInput').value = (teamState[currentSide].staff || [])
+                .map(p => `${p.num || ''}, ${p.name || ''}, ${p.role || ''}`).join('\n');
         } else {
-            view.style.display = 'block';
-            edit.style.display = 'none';
-            document.getElementById('edit-btn').style.display = 'inline-block';
+            view.style.display = 'block'; 
+            edit.style.display = 'none'; 
+            document.getElementById('edit-btn').style.display = 'inline-block'; 
             document.getElementById('save-btn').style.display = 'none';
         }
     }
-
+    
     function saveCasterList() {
         const text = document.getElementById('casterInput').value;
         teamState[currentSide].staff = text.split('\n').filter(l => l.trim() !== "").map(l => {
-            const [name, role] = l.split(',');
-            return { name: (name || "").trim(), role: (role || "").trim() };
+            const [num, name, role] = l.split(',').map(p => p.trim());
+            return { num: num || "", name: name || "", role: role || "" };
         });
-        toggleCasterEdit();
-        renderCasterButtons();
+        toggleCasterEdit(); 
+        renderCasterButtons(); 
+        pushServerToFirebase();
     }
-
+   
     function renderCasterButtons() {
-        const view = document.getElementById('caster-list-view');
+        const view = document.getElementById('caster-list-view'); 
         view.innerHTML = '';
-        teamState[currentSide].staff.forEach(person => {
-            const d = document.createElement('div');
-            d.className = 'bench-item';
-            d.innerText = `${person.name} (${person.role})`;
-            d.onclick = () => {
-                if (currentSide === 'top') topPresenter = person; else bottomPresenter = person;
-                pushServerToFirebase();
-                closeModal('caster');
+        (teamState[currentSide].staff || []).forEach(person => {
+            const d = document.createElement('div'); 
+            d.className = 'bench-item'; 
+            d.innerText = `${person.num ? person.num + ' ' : ''}${person.name}${person.role ? ' (' + person.role + ')' : ''}`;
+            d.onclick = () => { 
+                const selected = { num: person.num, name: person.name, role: person.role };
+                if (currentSide === 'top') topPresenter = selected; 
+                else bottomPresenter = selected; 
+                pushServerToFirebase(); 
+                closeModal('caster'); 
             };
             view.appendChild(d);
         });
@@ -224,23 +261,22 @@
         const players = document.getElementById(targetSide + '-side').querySelectorAll('.player');
         if (players[targetBtn]) players[targetBtn].style.border = '4px solid #ffd700';
     }
-
+    
     function rotatePlayers(side, dir) {
         if (dir === 1) teamState[side].onField.unshift(teamState[side].onField.pop());
         else teamState[side].onField.push(teamState[side].onField.shift());
         updateFieldDisplay(side); pushServerToFirebase();
     }
-
+    
     function updateFieldDisplay(side) { 
         const btns = document.getElementById(side + '-side').querySelectorAll('.player'); 
         const map = (side === 'top') ? topMap : bottomMap; 
         btns.forEach((btn, i) => { 
             const p = teamState[side].onField[map[i]]; 
             btn.innerText = p.num; 
-            // Подсказка только ФИО и роль в скобках
             btn.title = p.name + (p.role ? " (" + p.role + ")" : ""); 
-            btn.style.outline = (p.role === "Zuspieler") ? "2px solid white" : "none";
-            btn.style.outlineOffset = "-2px";
+            btn.style.outline = (p.role === "Zuspieler") ? "2px solid white" : "none"; 
+            btn.style.outlineOffset = "-2px"; 
         }); 
     }
     
@@ -252,14 +288,11 @@
         bench.innerHTML = ''; 
         const onFieldNums = teamState[side].onField.map(p => p.num); 
         teamState[side].roster.filter(p => !onFieldNums.includes(p.num)).forEach(p => { 
-            const d = document.createElement('div'); 
-            d.className = 'bench-item'; 
-            d.innerText = p.num + ' ' + p.name; 
-            d.onclick = () => { 
+            const d = document.createElement('div'); d.className = 'bench-item'; d.innerText = p.num + ' ' + p.name; 
+            d.onclick = () => {
                 const subOut = teamState[side].onField[playerIndex];
                 const subIn = { num: p.num, name: p.name, role: subOut.role }; 
-                teamState[side].historySubs[1] = teamState[side].historySubs[0];
-                teamState[side].historySubs[0] = { in: subIn, out: subOut };
+                teamState[side].historySubs[1] = teamState[side].historySubs[0]; teamState[side].historySubs[0] = { in: subIn, out: subOut };
                 teamState[side].onField[playerIndex] = subIn; 
                 updateFieldDisplay(side); closeModal('sub'); pushServerToFirebase(); 
             }; 
@@ -269,59 +302,84 @@
     }
     
     function swapSides() { 
+        isSyncing = true;
         homeSide = (homeSide === 'top') ? 'bottom' : 'top'; 
         [teamState.top, teamState.bottom] = [teamState.bottom, teamState.top];
         [topPresenter, bottomPresenter] = [bottomPresenter, topPresenter];
         document.getElementById('top-name').innerText = teamState.top.name; 
         document.getElementById('bottom-name').innerText = teamState.bottom.name; 
         document.querySelectorAll('.player').forEach(p => { p.classList.toggle('color-blue'); p.classList.toggle('color-gray'); }); 
-        updateFieldDisplay('top'); 
-        updateFieldDisplay('bottom'); 
+        updateFieldDisplay('top'); updateFieldDisplay('bottom'); 
         pushServerToFirebase(); 
+        setTimeout(() => { isSyncing = false; }, 1000);
     }
-
-    function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; } }
-    function openModal(type, side) { currentSide = side; document.getElementById(type + '-title').innerText = teamState[side].name; if (type === 'list') document.getElementById('listInput').value = teamState[side].roster.map(p => `${p.num}, ${p.name}`).join('\n'); else if (type === 'setup') document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}${p.role === 'Zuspieler' ? ', Z' : ''}` : '').join('\n'); document.getElementById(type == 'setup' ? 'setup-modal' : 'list-modal').style.display = 'block'; }
-    function closeModal(type) { document.getElementById(type + '-modal').style.display = 'none'; document.getElementById('caster-modal').style.display = 'none'; }
-    function saveList() { const text = document.getElementById('listInput').value; teamState[currentSide].roster = text.split('\n').filter(l => l.trim() !== "").map(l => { const [num, ...name] = l.split(','); return { num: num.trim(), name: name.join(',').trim() }; }); closeModal('list'); }
+    
+    function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; pushServerToFirebase(); } }
+    
+    function openModal(type, side) { 
+        currentSide = side; 
+        document.getElementById(type + '-title').innerText = teamState[side].name; 
+        if (type === 'list') document.getElementById('listInput').value = (teamState[side].roster || []).map(p => `${p.num}, ${p.name}`).join('\n'); 
+        else if (type === 'setup') document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}${p.role === 'Zuspieler' ? ', Z' : ''}` : '').join('\n'); 
+        document.getElementById(type == 'setup' ? 'setup-modal' : 'list-modal').style.display = 'block'; 
+    }
+    
+    function closeModal(type) { document.getElementById(type + '-modal') ? document.getElementById(type + '-modal').style.display = 'none' : null; document.getElementById('caster-modal').style.display = 'none'; }
+    
+    function saveList() { const text = document.getElementById('listInput').value; teamState[currentSide].roster = text.split('\n').filter(l => l.trim() !== "").map(l => { const [num, ...name] = l.split(','); return { num: num.trim(), name: name.join(',').trim() }; }); closeModal('list'); pushServerToFirebase(); }
     
     function saveSetup() {
-        const text = document.getElementById('setupInput').value;
-        const lines = text.split('\n').filter(l => l.trim() !== "");
-        let zIndex = -1;
-        
-        // Сначала сохраним текущих игроков с поля, чтобы не потерять имена
+        const text = document.getElementById('setupInput').value; const lines = text.split('\n').filter(l => l.trim() !== ""); let zIndex = -1;
         const currentPlayers = [...teamState[currentSide].onField];
-        
-        // Разбираем введенные номера
-        const inputData = lines.map((line, i) => {
-            const parts = line.split(',').map(s => s.trim());
-            const hasZ = parts.includes('Z');
-            if (hasZ) zIndex = i;
-            return { num: parts[0], hasZ };
-        });
-
+        const inputData = lines.map((line, i) => { const parts = line.split(',').map(s => s.trim()); const hasZ = parts.includes('Z'); if (hasZ) zIndex = i; return { num: parts[0], hasZ }; });
         teamState[currentSide].onField = Array(6).fill({num: '', name: '', role: ''});
-        
         inputData.forEach((data, i) => {
-            // 1. Ищем в списке команды (roster)
-            const fromRoster = teamState[currentSide].roster.find(p => p.num === data.num);
-            // 2. Ищем на поле (чтобы подхватить уже введенное имя)
+            const fromRoster = (teamState[currentSide].roster || []).find(p => p.num === data.num);
             const fromField = currentPlayers.find(p => p.num === data.num);
-            
             const finalName = fromRoster ? fromRoster.name : (fromField ? fromField.name : "");
-            
-            teamState[currentSide].onField[i] = {
-                num: data.num,
-                name: finalName,
-                role: zIndex !== -1 ? roleOrder[(i - zIndex + 6) % 6] : ""
-            };
+            teamState[currentSide].onField[i] = { num: data.num, name: finalName, role: zIndex !== -1 ? roleOrder[(i - zIndex + 6) % 6] : "" };
         });
-        
-        updateFieldDisplay(currentSide); 
-        closeModal('setup'); 
-        pushServerToFirebase();
+        updateFieldDisplay(currentSide); closeModal('setup'); pushServerToFirebase();
     }
+
+    async function loadStateFromFirebase() {
+        try {
+            const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/full_state.json");
+            const data = await response.json();
+            if (data && data.state) {
+                teamState.top = data.state.top; 
+                teamState.bottom = data.state.bottom;
+                if (!teamState.top.staff) teamState.top.staff = [];
+                if (!teamState.bottom.staff) teamState.bottom.staff = [];
+                homeSide = data.homeSide || 'top';
+                updateFieldDisplay('top'); updateFieldDisplay('bottom');
+                document.getElementById('top-name').innerText = teamState.top.name;
+                document.getElementById('bottom-name').innerText = teamState.bottom.name;
+            }
+        } catch (e) { console.error("Ошибка:", e); }
+    }
+    loadStateFromFirebase();
+
+    setInterval(async () => {
+        if (isSyncing) return; 
+        try {
+            const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/full_state.json");
+            const data = await response.json();
+            if (data && data.state) {
+                if (data.homeSide !== homeSide) {
+                    homeSide = data.homeSide;
+                    document.querySelectorAll('.player').forEach(p => { p.classList.toggle('color-blue'); p.classList.toggle('color-gray'); });
+                }
+                if (JSON.stringify(data.state) !== JSON.stringify(teamState)) {
+                    teamState.top = data.state.top; 
+                    teamState.bottom = data.state.bottom;
+                    document.getElementById('top-name').innerText = teamState.top.name;
+                    document.getElementById('bottom-name').innerText = teamState.bottom.name;
+                    updateFieldDisplay('top'); updateFieldDisplay('bottom');
+                }
+            }
+        } catch (e) { /* тихо */ }
+    }, 2000);
 </script>
 </body>
 </html>
