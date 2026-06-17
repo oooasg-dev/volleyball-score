@@ -114,19 +114,42 @@
         const awayList = [...awayData.roster, ...awayData.staff];
 
         let vmixObj = {
-            serve_heim_num: homeData.onField[0].num || "-", serve_heim_name: homeData.onField[0].name || "-", serve_heim_role: homeData.onField[0].role || "-",
-            serve_gast_num: awayData.onField[0].num || "-", serve_gast_name: awayData.onField[0].name || "-", serve_gast_role: awayData.onField[0].role || "-",
-            home_presenter_num: hPres.num || "-", home_presenter_name: hPres.name || "-", home_presenter_role: hPres.role || "-",
-            away_presenter_num: aPres.num || "-", away_presenter_name: aPres.name || "-", away_presenter_role: aPres.role || "-",
+            serve_heim_num:  homeData.onField[0].num  || "-", 
+            serve_heim_name: homeData.onField[0].name || "-", 
+            serve_heim_role: homeData.onField[0].role || "-",
+
+            serve_gast_num:  awayData.onField[0].num  || "-", 
+            serve_gast_name: awayData.onField[0].name || "-", 
+            serve_gast_role: awayData.onField[0].role || "-",
+
+            home_presenter_num:  hPres.num  || "-", 
+            home_presenter_name: hPres.name || "-", 
+            home_presenter_role: hPres.role || "-",
+
+            away_presenter_num:  aPres.num  || "-", 
+            away_presenter_name: aPres.name || "-", 
+            away_presenter_role: aPres.role || "-",
             
-            heim_wechs_in_Name1: homeData.historySubs[0].in.num + " " + homeData.historySubs[0].in.name, heim_wechs_in_Num1: homeData.historySubs[0].in.num,
-            heim_wechs_aus_Name1: homeData.historySubs[0].out.num + " " + homeData.historySubs[0].out.name, heim_wechs_aus_Num1: homeData.historySubs[0].out.num,
-            heim_wechs_in_Name2: homeData.historySubs[1].in.num + " " + homeData.historySubs[1].in.name, heim_wechs_in_Num2: homeData.historySubs[1].in.num,
-            heim_wechs_aus_Name2: homeData.historySubs[1].out.num + " " + homeData.historySubs[1].out.name, heim_wechs_aus_Num2: homeData.historySubs[1].out.num,
-            gast_wechs_in_Name1: awayData.historySubs[0].in.num + " " + awayData.historySubs[0].in.name, gast_wechs_in_Num1: awayData.historySubs[0].in.num,
-            gast_wechs_aus_Name1: awayData.historySubs[0].out.num + " " + awayData.historySubs[0].out.name, gast_wechs_aus_Num1: awayData.historySubs[0].out.num,
-            gast_wechs_in_Name2: awayData.historySubs[1].in.num + " " + awayData.historySubs[1].in.name, gast_wechs_in_Num2: awayData.historySubs[1].in.num,
-            gast_wechs_aus_Name2: awayData.historySubs[1].out.num + " " + awayData.historySubs[1].out.name, gast_wechs_aus_Num2: awayData.historySubs[1].out.num,
+            // Исправленные поля для замен: передаем чистое имя и чистый номер отдельно
+            heim_wechs_in_Name1: homeData.historySubs[0].in.name || "-", 
+            heim_wechs_in_Num1: homeData.historySubs[0].in.num || "-",
+            heim_wechs_aus_Name1: homeData.historySubs[0].out.name || "-", 
+            heim_wechs_aus_Num1: homeData.historySubs[0].out.num || "-",
+            
+            heim_wechs_in_Name2: homeData.historySubs[1].in.name || "-", 
+            heim_wechs_in_Num2: homeData.historySubs[1].in.num || "-",
+            heim_wechs_aus_Name2: homeData.historySubs[1].out.name || "-", 
+            heim_wechs_aus_Num2: homeData.historySubs[1].out.num || "-",
+            
+            gast_wechs_in_Name1: awayData.historySubs[0].in.name || "-", 
+            gast_wechs_in_Num1: awayData.historySubs[0].in.num || "-",
+            gast_wechs_aus_Name1: awayData.historySubs[0].out.name || "-", 
+            gast_wechs_aus_Num1: awayData.historySubs[0].out.num || "-",
+            
+            gast_wechs_in_Name2: awayData.historySubs[1].in.name || "-", 
+            gast_wechs_in_Num2: awayData.historySubs[1].in.num || "-",
+            gast_wechs_aus_Name2: awayData.historySubs[1].out.name || "-", 
+            gast_wechs_aus_Num2: awayData.historySubs[1].out.num || "-",
 
             aufst_heim_num1: homeData.onField[0]?.num || "-", aufst_heim_name1: homeData.onField[0]?.name || "-",
             aufst_heim_num2: homeData.onField[1]?.num || "-", aufst_heim_name2: homeData.onField[1]?.name || "-",
@@ -134,6 +157,7 @@
             aufst_heim_num4: homeData.onField[3]?.num || "-", aufst_heim_name4: homeData.onField[3]?.name || "-",
             aufst_heim_num5: homeData.onField[4]?.num || "-", aufst_heim_name5: homeData.onField[4]?.name || "-",
             aufst_heim_num6: homeData.onField[5]?.num || "-", aufst_heim_name6: homeData.onField[5]?.name || "-",
+
             aufst_gast_num1: awayData.onField[0]?.num || "-", aufst_gast_name1: awayData.onField[0]?.name || "-",
             aufst_gast_num2: awayData.onField[1]?.num || "-", aufst_gast_name2: awayData.onField[1]?.name || "-",
             aufst_gast_num3: awayData.onField[2]?.num || "-", aufst_gast_name3: awayData.onField[2]?.name || "-",
