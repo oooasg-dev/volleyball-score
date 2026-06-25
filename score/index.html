@@ -90,7 +90,7 @@
       state.manualMode = true; 
       updateUI();
       sendToFirebase();
-      setTimeout(() => { delete state.manualMode; sendToFirebase(); }, 1000);
+      setTimeout(() => { delete state.manualMode; sendToFirebase(); }, 2000);
   }
 
   function createTimelineCells() { 
