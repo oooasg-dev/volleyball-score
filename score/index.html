@@ -219,7 +219,7 @@
       updateUI(); 
       state.isUndo = true; 
       sendToFirebase(); 
-      setTimeout(() => { delete state.isUndo; sendToFirebase(); }, 500); 
+      setTimeout(() => { delete state.isUndo; sendToFirebase(); }, 3000); 
     } 
   }
   
