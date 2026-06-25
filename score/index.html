@@ -85,13 +85,21 @@
   function saveHistory() { historyStack.push(JSON.stringify(state)); if (historyStack.length > 20) historyStack.shift(); }
   
   function manualSwapServe() {
-      saveHistory();
-      state.serve = (state.serve === 1) ? 2 : 1;
-      state.manualMode = true; 
-      updateUI();
-      sendToFirebase();
-      setTimeout(() => { delete state.manualMode; sendToFirebase(); }, 2000);
-  }
+    saveHistory();
+    state.serve = (state.serve === 1) ? 2 : 1;
+    state.manualMode = true; 
+    updateUI();
+    sendToFirebase();
+    // ДОБАВИТЬ ЭТИ ТРИ СТРОКИ:
+    fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/manual_serve.json", 
+        { method: "PUT", body: JSON.stringify({active: true}) });
+    setTimeout(() => { 
+        delete state.manualMode; 
+        sendToFirebase(); 
+        fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/manual_serve.json", 
+            { method: "PUT", body: JSON.stringify({active: false}) });
+    }, 2000);
+}
 
   function createTimelineCells() { 
     const r21 = document.getElementById('row21_container'); 
