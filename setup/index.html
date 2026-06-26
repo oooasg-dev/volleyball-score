@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -67,7 +66,6 @@
     </div>
 </div>
 
-
 <div id="list-modal" class="modal"><h3 id="list-title">Список</h3><textarea id="listInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveList()">Сохранить</button></div>
 <div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
 <div id="sub-modal" class="modal"><h3>Замена</h3><div id="bench-list"></div><br><button onclick="closeModal('sub')">Отмена</button></div>
@@ -93,21 +91,20 @@
     const roleOrder = ["Zuspieler", "Aussenangriff", "Mittelblock", "Diagonal", "Aussenangriff", "Mittelblock"];
     let isSyncing = false;
 
-    // ── НОВОЕ: история для синхронной отмены ──
+    // ── история для синхронной отмены ──
     let aufstellungHistory = [];
     let lastUndoFlag = false;
-    let isUndoing = false; // блокирует лишнее вращение после отмены
+    let isUndoing = false;
 
     function saveAufstellungHistory(serveAtRotation) {
         aufstellungHistory.push(JSON.stringify({
             top: JSON.parse(JSON.stringify(teamState.top)),
             bottom: JSON.parse(JSON.stringify(teamState.bottom)),
             homeSide: homeSide,
-            serveAtRotation: serveAtRotation  // serve ПОСЛЕ которого произошло вращение
+            serveAtRotation: serveAtRotation
         }));
         if (aufstellungHistory.length > 20) aufstellungHistory.shift();
     }
-    // ──────────────────────────────────────────
 
     const teamState = {
         top: { name: "Команда 1", roster: [], staff: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] },
@@ -236,9 +233,6 @@
                 isSyncing = true;
                 if (aufstellungHistory.length > 0) {
                     const prev = JSON.parse(aufstellungHistory[aufstellungHistory.length - 1]);
-                    // откатываем только если вращение было у той команды которая сейчас ПОТЕРЯЛА подачу
-                    // serveAtRotation = кто ПОЛУЧИЛ подачу и у кого была ротация
-                    // если после отмены подача ушла от этой команды (serve изменился) — откатываем
                     if (prev.serveAtRotation !== data.serve) {
                         aufstellungHistory.pop();
                         teamState.top = prev.top;
@@ -248,11 +242,8 @@
                         updateFieldDisplay('bottom');
                         document.getElementById('top-name').innerText = teamState.top.name;
                         document.getElementById('bottom-name').innerText = teamState.bottom.name;
-                        dbg('<<< RESTORED (serve changed), pushing to Firebase');
                         await pushServerToFirebase();
-                    } else {
                     }
-                } else {
                 }
                 lastServe = data.serve;
                 updateHighlight(data.serve);
@@ -265,7 +256,6 @@
             if (data.serve !== undefined) { updateHighlight(data.serve); }
             if (!isUndoing && lastServe !== 0 && lastServe !== data.serve) {
                 let sideToRotate = (data.serve === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
-                dbg('ROTATE ' + sideToRotate + ' (serve ' + lastServe + '->' + data.serve + ')');
                 rotatePlayers(sideToRotate, -1, data.serve);
             }
             lastServe = data.serve;
@@ -334,7 +324,6 @@
         if (players[targetBtn]) players[targetBtn].style.border = '4px solid #ffd700';
     }
     
-    // ── ИЗМЕНЕНО: добавлен saveAufstellungHistory() перед вращением ──
     function rotatePlayers(side, dir, newServe) {
         saveAufstellungHistory(newServe !== undefined ? newServe : lastServe);
         if (dir === 1) teamState[side].onField.unshift(teamState[side].onField.pop());
