@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -66,6 +67,7 @@
     </div>
 </div>
 
+
 <div id="list-modal" class="modal"><h3 id="list-title">Список</h3><textarea id="listInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveList()">Сохранить</button></div>
 <div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
 <div id="sub-modal" class="modal"><h3>Замена</h3><div id="bench-list"></div><br><button onclick="closeModal('sub')">Отмена</button></div>
@@ -90,6 +92,22 @@
     let bottomPresenter = { num: "-", name: "-", role: "-" };
     const roleOrder = ["Zuspieler", "Aussenangriff", "Mittelblock", "Diagonal", "Aussenangriff", "Mittelblock"];
     let isSyncing = false;
+
+    // ── НОВОЕ: история для синхронной отмены ──
+    let aufstellungHistory = [];
+    let lastUndoFlag = false;
+    let isUndoing = false; // блокирует лишнее вращение после отмены
+
+    function saveAufstellungHistory(serveAtRotation) {
+        aufstellungHistory.push(JSON.stringify({
+            top: JSON.parse(JSON.stringify(teamState.top)),
+            bottom: JSON.parse(JSON.stringify(teamState.bottom)),
+            homeSide: homeSide,
+            serveAtRotation: serveAtRotation  // serve ПОСЛЕ которого произошло вращение
+        }));
+        if (aufstellungHistory.length > 20) aufstellungHistory.shift();
+    }
+    // ──────────────────────────────────────────
 
     const teamState = {
         top: { name: "Команда 1", roster: [], staff: [], onField: Array(6).fill({num: '', name: '', role: ''}), historySubs: [{in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}, {in:{num:'',name:'',role:''}, out:{num:'',name:'',role:''}}] },
@@ -130,7 +148,6 @@
             away_presenter_name: aPres.name || "-", 
             away_presenter_role: aPres.role || "-",
             
-            // Исправленные поля для замен: передаем чистое имя и чистый номер отдельно
             heim_wechs_in_Name1: homeData.historySubs[0].in.name || "-", 
             heim_wechs_in_Num1: homeData.historySubs[0].in.num || "-",
             heim_wechs_aus_Name1: homeData.historySubs[0].out.name || "-", 
@@ -211,15 +228,50 @@
             const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/match.json");
             const data = await response.json();
             if (!data) return;
+
+            const isUndoNow = !!data.isUndo;
+
+            if (isUndoNow && !lastUndoFlag) {
+                isUndoing = true;
+                isSyncing = true;
+                if (aufstellungHistory.length > 0) {
+                    const prev = JSON.parse(aufstellungHistory[aufstellungHistory.length - 1]);
+                    // откатываем только если вращение было у той команды которая сейчас ПОТЕРЯЛА подачу
+                    // serveAtRotation = кто ПОЛУЧИЛ подачу и у кого была ротация
+                    // если после отмены подача ушла от этой команды (serve изменился) — откатываем
+                    if (prev.serveAtRotation !== data.serve) {
+                        aufstellungHistory.pop();
+                        teamState.top = prev.top;
+                        teamState.bottom = prev.bottom;
+                        homeSide = prev.homeSide;
+                        updateFieldDisplay('top');
+                        updateFieldDisplay('bottom');
+                        document.getElementById('top-name').innerText = teamState.top.name;
+                        document.getElementById('bottom-name').innerText = teamState.bottom.name;
+                        dbg('<<< RESTORED (serve changed), pushing to Firebase');
+                        await pushServerToFirebase();
+                    } else {
+                    }
+                } else {
+                }
+                lastServe = data.serve;
+                updateHighlight(data.serve);
+                lastUndoFlag = true;
+                setTimeout(() => { isUndoing = false; isSyncing = false; }, 3000);
+                return;
+            }
+            if (!isUndoNow) lastUndoFlag = false;
+
             if (data.serve !== undefined) { updateHighlight(data.serve); }
-            if (lastServe !== 0 && lastServe !== data.serve) {
+            if (!isUndoing && lastServe !== 0 && lastServe !== data.serve) {
                 let sideToRotate = (data.serve === 1) ? homeSide : (homeSide === 'top' ? 'bottom' : 'top');
-                rotatePlayers(sideToRotate, -1);
+                dbg('ROTATE ' + sideToRotate + ' (serve ' + lastServe + '->' + data.serve + ')');
+                rotatePlayers(sideToRotate, -1, data.serve);
             }
             lastServe = data.serve;
         } catch (e) { console.error("Ошибка синхронизации:", e); }
     }
-    setInterval(syncServeStatus, 1500);
+    setInterval(syncServeStatus, 500);
         
     function openCasterModal(side) { 
         currentSide = side; 
@@ -233,20 +285,16 @@
     
     function toggleCasterEdit() {
         const view = document.getElementById('caster-list-view');
-        const edit = document.getElementById('caster-edit-view');
-        if (edit.style.display === 'none') {
-            view.style.display = 'none'; 
-            edit.style.display = 'block'; 
-            document.getElementById('edit-btn').style.display = 'none'; 
-            document.getElementById('save-btn').style.display = 'inline-block';
-            document.getElementById('casterInput').value = (teamState[currentSide].staff || [])
-                .map(p => `${p.num || ''}, ${p.name || ''}, ${p.role || ''}`).join('\n');
-        } else {
-            view.style.display = 'block'; 
-            edit.style.display = 'none'; 
-            document.getElementById('edit-btn').style.display = 'inline-block'; 
-            document.getElementById('save-btn').style.display = 'none';
-        }
+        document.getElementById('caster-edit-view').style.display === 'none'
+            ? (view.style.display = 'none',
+               document.getElementById('caster-edit-view').style.display = 'block',
+               document.getElementById('edit-btn').style.display = 'none',
+               document.getElementById('save-btn').style.display = 'inline-block',
+               document.getElementById('casterInput').value = (teamState[currentSide].staff || []).map(p => `${p.num || ''}, ${p.name || ''}, ${p.role || ''}`).join('\n'))
+            : (view.style.display = 'block',
+               document.getElementById('caster-edit-view').style.display = 'none',
+               document.getElementById('edit-btn').style.display = 'inline-block',
+               document.getElementById('save-btn').style.display = 'none');
     }
     
     function saveCasterList() {
@@ -286,7 +334,9 @@
         if (players[targetBtn]) players[targetBtn].style.border = '4px solid #ffd700';
     }
     
-    function rotatePlayers(side, dir) {
+    // ── ИЗМЕНЕНО: добавлен saveAufstellungHistory() перед вращением ──
+    function rotatePlayers(side, dir, newServe) {
+        saveAufstellungHistory(newServe !== undefined ? newServe : lastServe);
         if (dir === 1) teamState[side].onField.unshift(teamState[side].onField.pop());
         else teamState[side].onField.push(teamState[side].onField.shift());
         updateFieldDisplay(side); pushServerToFirebase();
