@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -91,7 +92,6 @@
     const roleOrder = ["Zuspieler", "Aussenangriff", "Mittelblock", "Diagonal", "Aussenangriff", "Mittelblock"];
     let isSyncing = false;
 
-    // ── история для синхронной отмены ──
     let aufstellungHistory = [];
     let lastUndoFlag = false;
     let isUndoing = false;
@@ -128,6 +128,10 @@
         const homeList = [...homeData.roster, ...homeData.staff];
         const awayList = [...awayData.roster, ...awayData.staff];
 
+        // Либеро из roster
+        const homeLiberos = homeData.roster.filter(p => p.role === "Libero");
+        const awayLiberos = awayData.roster.filter(p => p.role === "Libero");
+
         let vmixObj = {
             serve_heim_num:  homeData.onField[0].num  || "-", 
             serve_heim_name: homeData.onField[0].name || "-", 
@@ -144,22 +148,20 @@
             away_presenter_num:  aPres.num  || "-", 
             away_presenter_name: aPres.name || "-", 
             away_presenter_role: aPres.role || "-",
-            
+
             heim_wechs_in_Name1: homeData.historySubs[0].in.name || "-", 
             heim_wechs_in_Num1: homeData.historySubs[0].in.num || "-",
             heim_wechs_aus_Name1: homeData.historySubs[0].out.name || "-", 
             heim_wechs_aus_Num1: homeData.historySubs[0].out.num || "-",
-            
             heim_wechs_in_Name2: homeData.historySubs[1].in.name || "-", 
             heim_wechs_in_Num2: homeData.historySubs[1].in.num || "-",
             heim_wechs_aus_Name2: homeData.historySubs[1].out.name || "-", 
             heim_wechs_aus_Num2: homeData.historySubs[1].out.num || "-",
-            
+
             gast_wechs_in_Name1: awayData.historySubs[0].in.name || "-", 
             gast_wechs_in_Num1: awayData.historySubs[0].in.num || "-",
             gast_wechs_aus_Name1: awayData.historySubs[0].out.name || "-", 
             gast_wechs_aus_Num1: awayData.historySubs[0].out.num || "-",
-            
             gast_wechs_in_Name2: awayData.historySubs[1].in.name || "-", 
             gast_wechs_in_Num2: awayData.historySubs[1].in.num || "-",
             gast_wechs_aus_Name2: awayData.historySubs[1].out.name || "-", 
@@ -178,6 +180,21 @@
             aufst_gast_num4: awayData.onField[3]?.num || "-", aufst_gast_name4: awayData.onField[3]?.name || "-",
             aufst_gast_num5: awayData.onField[4]?.num || "-", aufst_gast_name5: awayData.onField[4]?.name || "-",
             aufst_gast_num6: awayData.onField[5]?.num || "-", aufst_gast_name6: awayData.onField[5]?.name || "-",
+
+            // Либеро отдельно
+            libero_heim_num1:  homeLiberos[0]?.num  || "-",
+            libero_heim_name1: homeLiberos[0]?.name || "-",
+            libero_heim_role1: homeLiberos[0] ? "Libero" : "-",
+            libero_heim_num2:  homeLiberos[1]?.num  || "-",
+            libero_heim_name2: homeLiberos[1]?.name || "-",
+            libero_heim_role2: homeLiberos[1] ? "Libero" : "-",
+
+            libero_gast_num1:  awayLiberos[0]?.num  || "-",
+            libero_gast_name1: awayLiberos[0]?.name || "-",
+            libero_gast_role1: awayLiberos[0] ? "Libero" : "-",
+            libero_gast_num2:  awayLiberos[1]?.num  || "-",
+            libero_gast_name2: awayLiberos[1]?.name || "-",
+            libero_gast_role2: awayLiberos[1] ? "Libero" : "-",
 
             liste_heim_num1: homeList[0]?.num || "-", liste_heim_name1: homeList[0]?.name || "-",
             liste_heim_num2: homeList[1]?.num || "-", liste_heim_name2: homeList[1]?.name || "-",
@@ -262,7 +279,7 @@
         } catch (e) { console.error("Ошибка синхронизации:", e); }
     }
     setInterval(syncServeStatus, 500);
-        
+
     function openCasterModal(side) { 
         currentSide = side; 
         renderCasterButtons(); 
@@ -272,7 +289,7 @@
         document.getElementById('save-btn').style.display = 'none';
         document.getElementById('caster-modal').style.display = 'block'; 
     }
-    
+
     function toggleCasterEdit() {
         const view = document.getElementById('caster-list-view');
         document.getElementById('caster-edit-view').style.display === 'none'
@@ -286,7 +303,7 @@
                document.getElementById('edit-btn').style.display = 'inline-block',
                document.getElementById('save-btn').style.display = 'none');
     }
-    
+
     function saveCasterList() {
         const text = document.getElementById('casterInput').value;
         teamState[currentSide].staff = text.split('\n').filter(l => l.trim() !== "").map(l => {
@@ -297,7 +314,7 @@
         renderCasterButtons(); 
         pushServerToFirebase();
     }
-   
+
     function renderCasterButtons() {
         const view = document.getElementById('caster-list-view'); 
         view.innerHTML = '';
@@ -323,14 +340,14 @@
         const players = document.getElementById(targetSide + '-side').querySelectorAll('.player');
         if (players[targetBtn]) players[targetBtn].style.border = '4px solid #ffd700';
     }
-    
+
     function rotatePlayers(side, dir, newServe) {
         saveAufstellungHistory(newServe !== undefined ? newServe : lastServe);
         if (dir === 1) teamState[side].onField.unshift(teamState[side].onField.pop());
         else teamState[side].onField.push(teamState[side].onField.shift());
         updateFieldDisplay(side); pushServerToFirebase();
     }
-    
+
     function updateFieldDisplay(side) { 
         const btns = document.getElementById(side + '-side').querySelectorAll('.player'); 
         const map = (side === 'top') ? topMap : bottomMap; 
@@ -342,7 +359,7 @@
             btn.style.outlineOffset = "-2px"; 
         }); 
     }
-    
+
     function initSub(side, btnIndex) { 
         currentSide = side; 
         const map = (side === 'top') ? topMap : bottomMap; 
@@ -363,7 +380,7 @@
         }); 
         document.getElementById('sub-modal').style.display = 'block'; 
     }
-    
+
     function swapSides() { 
         isSyncing = true;
         homeSide = (homeSide === 'top') ? 'bottom' : 'top'; 
@@ -376,21 +393,41 @@
         pushServerToFirebase(); 
         setTimeout(() => { isSyncing = false; }, 1000);
     }
-    
+
     function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; pushServerToFirebase(); } }
-    
+
     function openModal(type, side) { 
         currentSide = side; 
         document.getElementById(type + '-title').innerText = teamState[side].name; 
-        if (type === 'list') document.getElementById('listInput').value = (teamState[side].roster || []).map(p => `${p.num}, ${p.name}`).join('\n'); 
-        else if (type === 'setup') document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}${p.role === 'Zuspieler' ? ', Z' : ''}` : '').join('\n'); 
+        if (type === 'list') {
+            let liberoCount = 0;
+            document.getElementById('listInput').value = (teamState[side].roster || []).map(p => {
+                if (p.role === "Libero") { liberoCount++; return `${p.num}, ${p.name}, L${liberoCount}`; }
+                return `${p.num}, ${p.name}`;
+            }).join('\n');
+        } else if (type === 'setup') {
+            document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}${p.role === 'Zuspieler' ? ', Z' : ''}` : '').join('\n');
+        }
         document.getElementById(type == 'setup' ? 'setup-modal' : 'list-modal').style.display = 'block'; 
     }
-    
+
     function closeModal(type) { document.getElementById(type + '-modal') ? document.getElementById(type + '-modal').style.display = 'none' : null; document.getElementById('caster-modal').style.display = 'none'; }
-    
-    function saveList() { const text = document.getElementById('listInput').value; teamState[currentSide].roster = text.split('\n').filter(l => l.trim() !== "").map(l => { const [num, ...name] = l.split(','); return { num: num.trim(), name: name.join(',').trim() }; }); closeModal('list'); pushServerToFirebase(); }
-    
+
+    function saveList() {
+        const text = document.getElementById('listInput').value;
+        const lines = text.split('\n').filter(l => l.trim() !== "");
+        teamState[currentSide].roster = lines.map(l => {
+            const parts = l.split(',').map(s => s.trim());
+            const num = parts[0] || "";
+            const name = parts[1] || "";
+            const marker = (parts[2] || "").toUpperCase();
+            const role = (marker === "L1" || marker === "L2") ? "Libero" : "";
+            return { num, name, role };
+        });
+        closeModal('list');
+        pushServerToFirebase();
+    }
+
     function saveSetup() {
         const text = document.getElementById('setupInput').value; const lines = text.split('\n').filter(l => l.trim() !== ""); let zIndex = -1;
         const currentPlayers = [...teamState[currentSide].onField];
