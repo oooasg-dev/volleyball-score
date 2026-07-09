@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Score v3.8.5</title>
+  <title>Score v3.9.0</title>
   <link rel="apple-touch-icon" href="https://i.ibb.co/Z6Hcnvf9/image.png">
   <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/Z6Hcnvf9/image.png">
   <link rel="shortcut icon" href="https://i.ibb.co/Z6Hcnvf9/image.png" type="image/png">
@@ -40,6 +40,19 @@
     .control-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; margin-top: 8px; }
     .btn-reset { color: white; height: 46px; font-size: 0.95rem; font-weight: bold; text-transform: uppercase; border: none; border-radius: 4px; cursor: pointer; }
     .btn-undo { background-color: #607d8b; grid-column: span 2; height: 44px; font-size: 1rem;}
+
+    /* СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ВЫБОРА КОМАНД */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 16px; border-radius: 8px; width: 90%; max-width: 360px; box-sizing: border-box; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .modal-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; color: #2e7d32; text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 6px;}
+    .modal-field { margin-bottom: 12px; }
+    .modal-field label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
+    .modal-field select, .modal-field input { width: 100%; height: 40px; border: 1px solid #b0bec5; border-radius: 4px; padding: 0 8px; box-sizing: border-box; font-size: 1rem; background: #fff; }
+    .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+    .btn-modal { height: 40px; font-size: 1rem; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-modal-save { background: #2e7d32; color: #fff; }
+    .btn-modal-close { background: #78909c; color: #fff; }
+    .toggle-input-mode { font-size: 0.8rem; color: #1976d2; cursor: pointer; text-decoration: underline; text-align: center; margin-top: 8px; display: block; }
   </style>
 </head>
 <body>
@@ -47,9 +60,9 @@
 <div class="phone-wrapper">
   <div class="main-table">
     <div class="header-row">
-      <div class="team-block"><span id="t1_name" class="team-title">Team A</span><button class="btn-edit" onclick="editTeam(1)">📝</button></div>
+      <div class="team-block"><span id="t1_name" class="team-title">Team A</span><button class="btn-edit" onclick="openTeamModal(1)">📝</button></div>
       <div><span class="satz-title" id="current_set_label">SATZ 1</span></div>
-      <div class="team-block"><span id="t2_name" class="team-title">Team B</span><button class="btn-edit" onclick="editTeam(2)">📝</button></div>
+      <div class="team-block"><span id="t2_name" class="team-title">Team B</span><button class="btn-edit" onclick="openTeamModal(2)">📝</button></div>
     </div>
     <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('ang1', 1)">+1</button><div id="v_ang1" class="val-cell">0</div><div class="label-cell">Angriff</div><div id="v_ang2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('ang2', 2)">+1</button></div>
     <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('blk1', 1)">+1</button><div id="v_blk1" class="val-cell">0</div><div class="label-cell">Block</div><div id="v_blk2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('blk2', 2)">+1</button></div>
@@ -74,13 +87,166 @@
   </div>
 </div>
 
-<script>
-  const FIREBASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/match.json";
-  const VMIX_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/vmix.json";
+<!-- КРАСИВОЕ МОДАЛЬНОЕ ОКНО ДЛЯ ВЫБОРА ЛИГ И КОМАНД -->
+<div class="modal-overlay" id="teamModal">
+  <div class="modal-content">
+    <div class="modal-title" id="modalTitle">Выбор команды</div>
+    
+    <!-- Блок со списками из базы данных -->
+    <div id="dbSelectBlock">
+      <div class="modal-field">
+        <label>Выбрать Лигу:</label>
+        <select id="modalLeagueSelect" onchange="onModalLeagueChange()"></select>
+      </div>
+      <div class="modal-field">
+        <label>Выбрать Команду:</label>
+        <select id="modalTeamSelect"></select>
+      </div>
+    </div>
 
-  let state = { team1Name: "Team A", team2Name: "Team B", ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, historyStr: "—", serve: 0, timeline: [], finalSetPts1: 0, finalSetPts2: 0 };
+    <!-- Блок для ручного ввода (как раньше) -->
+    <div id="manualInputBlock" style="display: none;">
+      <div class="modal-field">
+        <label>Название команды (вручную):</label>
+        <input type="text" id="modalManualInput" placeholder="Введите имя...">
+      </div>
+    </div>
+
+    <span class="toggle-input-mode" id="toggleModeBtn" onclick="toggleInputMode()">Переключить на ручной ввод</span>
+
+    <div class="modal-buttons">
+      <button class="btn-modal btn-modal-close" onclick="closeTeamModal()">Отмена</button>
+      <button class="btn-modal btn-modal-save" onclick="saveTeamModalSelection()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const FIREBASE_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com";
+  const FIREBASE_URL = `${FIREBASE_BASE_URL}/match.json`;
+  const VMIX_URL = `${FIREBASE_BASE_URL}/vmix.json`;
+
+  let state = { team1Name: "Team A", team2Name: "Team B", team1Logo: "", team2Logo: "", ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, historyStr: "—", serve: 0, timeline: [], finalSetPts1: 0, finalSetPts2: 0 };
   let historyStack = [];
   let isSyncing = false;
+
+  // Локальные переменные для хранения структур данных
+  let dbTournamentData = null;
+  let dbTeamsDictionary = null;
+  let currentEditingTeamNum = 1; // 1 - хозяева, 2 - гости
+  let isManualModeActive = false;
+
+  // Функция для очистки имени (совпадает с логикой ключей в create_dict.js)
+  function cleanFirebaseKey(name) {
+    return name.replace(/[\.\$\#\[\]\/]/g, '_').trim();
+  }
+
+  // Загрузка списков турниров и справочника при старте
+  function loadDatabaseStructures() {
+    fetch(`${FIREBASE_BASE_URL}/tournament.json`).then(res => res.json()).then(data => { dbTournamentData = data; });
+    fetch(`${FIREBASE_BASE_URL}/teams_dictionary.json`).then(res => res.json()).then(data => { dbTeamsDictionary = data; });
+  }
+
+  // Открытие модального окна
+  function openTeamModal(teamNum) {
+    currentEditingTeamNum = teamNum;
+    isManualModeActive = false;
+    document.getElementById('modalTitle').innerText = (teamNum === 1) ? "Домашняя команда (1)" : "Гостевая команда (2)";
+    document.getElementById('dbSelectBlock').style.display = "block";
+    document.getElementById('manualInputBlock').style.display = "none";
+    document.getElementById('toggleModeBtn').innerText = "Переключить на ручной ввод";
+    document.getElementById('modalManualInput').value = (teamNum === 1) ? state.team1Name : state.team2Name;
+
+    const leagueSelect = document.getElementById('modalLeagueSelect');
+    leagueSelect.innerHTML = '<option value="">-- Выберите лигу --</option>';
+
+    if (dbTournamentData) {
+      Object.keys(dbTournamentData).forEach(leagueId => {
+        let opt = document.createElement('option');
+        opt.value = leagueId;
+        opt.innerText = leagueId.toUpperCase().replace(/_/g, ' ');
+        leagueSelect.appendChild(opt);
+      });
+    }
+    document.getElementById('modalTeamSelect').innerHTML = '<option value="">-- Сначала выберите лигу --</option>';
+    document.getElementById('teamModal').style.display = "flex";
+  }
+
+  // Смена лиги в модальном окне -> перестраиваем список команд
+  function onModalLeagueChange() {
+    const leagueId = document.getElementById('modalLeagueSelect').value;
+    const teamSelect = document.getElementById('modalTeamSelect');
+    teamSelect.innerHTML = '<option value="">-- Выберите команду --</option>';
+
+    if (leagueId && dbTournamentData && dbTournamentData[leagueId] && dbTournamentData[leagueId].standings) {
+      dbTournamentData[leagueId].standings.forEach(team => {
+        let opt = document.createElement('option');
+        opt.value = team.teamName;
+        opt.innerText = team.teamName;
+        teamSelect.appendChild(opt);
+      });
+    }
+  }
+
+  // Переключение между выпадающими списками и обычным текстовым полем ввода
+  function toggleInputMode() {
+    isManualModeActive = !isManualModeActive;
+    if (isManualModeActive) {
+      document.getElementById('dbSelectBlock').style.display = "none";
+      document.getElementById('manualInputBlock').style.display = "block";
+      document.getElementById('toggleModeBtn').innerText = "Переключить на списки базы";
+    } else {
+      document.getElementById('dbSelectBlock').style.display = "block";
+      document.getElementById('manualInputBlock').style.display = "none";
+      document.getElementById('toggleModeBtn').innerText = "Переключить на ручной ввод";
+    }
+  }
+
+  function closeTeamModal() {
+    document.getElementById('teamModal').style.display = "none";
+  }
+
+  // Сохранение выбора из модального окна
+  function saveTeamModalSelection() {
+    saveHistory();
+    let finalName = "";
+    let finalLogo = "";
+
+    if (isManualModeActive) {
+      finalName = document.getElementById('modalManualInput').value.trim();
+    } else {
+      const selectedTeamRaw = document.getElementById('modalTeamSelect').value;
+      if (!selectedTeamRaw) {
+        alert("Пожалуйста, выберите команду или переключитесь на ручной ввод.");
+        return;
+      }
+      finalName = selectedTeamRaw;
+      
+      // Ищем короткое имя и логотип в справочнике teams_dictionary
+      const safeKey = cleanFirebaseKey(selectedTeamRaw);
+      if (dbTeamsDictionary && dbTeamsDictionary[safeKey]) {
+        if (dbTeamsDictionary[safeKey].shortName) {
+          finalName = dbTeamsDictionary[safeKey].shortName;
+        }
+        if (dbTeamsDictionary[safeKey].logo) {
+          finalLogo = dbTeamsDictionary[safeKey].logo;
+        }
+      }
+    }
+
+    if (finalName) {
+      if (currentEditingTeamNum === 1) {
+        state.team1Name = finalName;
+        state.team1Logo = finalLogo;
+      } else {
+        state.team2Name = finalName;
+        state.team2Logo = finalLogo;
+      }
+      updateUI();
+      sendToFirebase();
+    }
+    closeTeamModal();
+  }
 
   function saveHistory() { historyStack.push(JSON.stringify(state)); if (historyStack.length > 20) historyStack.shift(); }
   
@@ -90,16 +256,15 @@
     state.manualMode = true; 
     updateUI();
     sendToFirebase();
-    // ДОБАВИТЬ ЭТИ ТРИ СТРОКИ:
-    fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/manual_serve.json", 
+    fetch(`${FIREBASE_BASE_URL}/manual_serve.json`, 
         { method: "PUT", body: JSON.stringify({active: true}) });
     setTimeout(() => { 
         delete state.manualMode; 
         sendToFirebase(); 
-        fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/manual_serve.json", 
+        fetch(`${FIREBASE_BASE_URL}/manual_serve.json`, 
             { method: "PUT", body: JSON.stringify({active: false}) });
     }, 2000);
-}
+  }
 
   function createTimelineCells() { 
     const r21 = document.getElementById('row21_container'); 
@@ -158,7 +323,15 @@
 
   function syncFromFirebase() {
     if (isSyncing) return;
-    fetch(FIREBASE_URL).then(res => res.json()).then(data => { if (data) { state = data; updateUI(); } });
+    fetch(FIREBASE_URL).then(res => res.json()).then(data => { if (data) { 
+      // Сохраняем логотипы, если они пришли из базы при синхронизации других пультов
+      const l1 = state.team1Logo;
+      const l2 = state.team2Logo;
+      state = data; 
+      if(!state.team1Logo) state.team1Logo = l1;
+      if(!state.team2Logo) state.team2Logo = l2;
+      updateUI(); 
+    } });
   }
   setInterval(syncFromFirebase, 2000);
 
@@ -177,7 +350,9 @@
       pts1: state.pts1, pts2: state.pts2, set1: state.set1, set2: state.set2, 
       ang1: state.ang1, ang2: state.ang2, blk1: state.blk1, blk2: state.blk2, 
       ase1: state.ase1, ase2: state.ase2, fhl1: state.fhl1, fhl2: state.fhl2, 
-      team1Name: state.team1Name, team2Name: state.team2Name, historyStr: state.historyStr,
+      team1Name: state.team1Name, team2Name: state.team2Name, 
+      team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "", // Передаем пути к логотипам в vMix
+      historyStr: state.historyStr,
       lastFinishedSet: (state.currentSet - 1),
       serve1: state.serve === 1 ? "●" : "", serve2: state.serve === 2 ? "●" : "",
       finalSetPts1: state.finalSetPts1 || 0, finalSetPts2: state.finalSetPts2 || 0,
@@ -192,8 +367,6 @@
     isSyncing = false;
   }
 
-  function editTeam(teamNum) { saveHistory(); let name = prompt("Name eingeben:", teamNum === 1 ? state.team1Name : state.team2Name); if (name) { if (teamNum === 1) state.team1Name = name; else state.team2Name = name; updateUI(); sendToFirebase(); } }
-  
   function clickPlus(statField, team) { 
     saveHistory(); 
     state[statField]++; 
@@ -251,6 +424,7 @@
     if (confirm("Alles komplett zurücksetzen?")) { 
       state = { 
         team1Name: state.team1Name, team2Name: state.team2Name, 
+        team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "",
         ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, 
         pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, 
         historyStr: "—", serve: 0, timeline: [], 
@@ -262,7 +436,7 @@
     } 
   }
 
-  createTimelineCells(); updateUI();
+  createTimelineCells(); loadDatabaseStructures(); updateUI();
 </script>
 </body>
 </html>
