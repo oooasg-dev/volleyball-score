@@ -37,16 +37,22 @@
     
     /* СТИЛИ ДЛЯ АВТОМАТИЧЕСКИХ СЕТОВ И ТАЙМ-АУТОВ */
     .satz-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
-    .control-btn-block { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 125px; }
-    .btn-satz-inc { background-color: #2e7d32; height: 32px; font-size: 0.9rem; width: 100%; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; }
-    .btn-timeout { background-color: #78909c; height: 35px; font-size: 1.1rem; width: 100%; border: none; border-radius: 4px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
+    /* Управляет шириной всего блока (сделали чуть уже: со 125px до 110px) */
+    .control-btn-block { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 110px; }
+    
+    /* Кнопка тайм-аута (сделали выше: с 35px до 46px) */
+    .btn-timeout { background-color: #78909c; height: 46px; font-size: 1.6rem; width: 100%; border: none; border-radius: 4px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
     .btn-timeout.active { background-color: #f57c00 !important; animation: blink 1s infinite; }
+    
+    /* Кнопка +1 Сет (тоже сделали выше: с 32px до 42px) */
+    .btn-satz-inc { background-color: #2e7d32; height: 42px; font-size: 0.95rem; width: 100%; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; text-transform: uppercase; }
     .timeout-dots { display: flex; gap: 6px; justify-content: center; margin-top: 2px; }
     .t-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #546e7a; background-color: #ffffff; transition: background 0.3s; }
     .t-dot.used { background-color: #78909c; border-color: #37474f; }
     
-    .satz-val { background: #cfd8dc; font-size: 1.3rem; font-weight: bold; padding: 6px 0; border-radius: 4px; border: 1px solid #78909c; width: 45px; display: flex; align-items: center; justify-content: center; height: 34px; box-sizing: border-box; }
-    .history-cell { background: #fff; font-size: 0.85rem; font-weight: bold; padding: 8px 2px; border-radius: 4px; border: 1px solid #78909c; color: #555; width: 120px; min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: center; height: 34px; box-sizing: border-box; }
+    /* Высота ячеек счета сетов и истории (подровняли под новые высокие кнопки) */
+    .satz-val { background: #cfd8dc; font-size: 1.4rem; font-weight: bold; padding: 6px 0; border-radius: 4px; border: 1px solid #78909c; width: 45px; display: flex; align-items: center; justify-content: center; height: 46px; box-sizing: border-box; }
+    .history-cell { background: #fff; font-size: 0.85rem; font-weight: bold; padding: 8px 2px; border-radius: 4px; border: 1px solid #78909c; color: #555; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: center; height: 46px; box-sizing: border-box; }
     
     .timeline-container { background: #eceff1; border: 2px solid #78909c; border-radius: 6px; margin: 10px 0; padding: 6px; }
     .timeline-title { font-size: 0.8rem; font-weight: bold; color: #37474f; text-transform: uppercase; margin-bottom: 4px; }
