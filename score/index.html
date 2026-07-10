@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Score v3.9.0</title>
-  <link rel="apple-touch-icon" href="https://i.ibb.co/Z6Hcnvf9/image.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/Z6Hcnvf9/image.png">
-  <link rel="shortcut icon" href="https://i.ibb.co/Z6Hcnvf9/image.png" type="image/png">
+  <title>Score v4.0.1</title>
+  <link class="apple-touch-icon" href="https://i.ibb.co/Z6Hcnvf9/image.png">
+  <link class="apple-touch-icon" sizes="180x180" href="https://i.ibb.co/Z6Hcnvf9/image.png">
+  <link class="shortcut icon" href="https://i.ibb.co/Z6Hcnvf9/image.png" type="image/png">
   <style>
     body { font-family: Arial, sans-serif; background: #d4ebd5; text-align: center; margin: 0; padding: 8px; color: #333; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
     .phone-wrapper { max-width: 420px; margin: 0 auto; }
@@ -41,7 +41,7 @@
     .btn-reset { color: white; height: 46px; font-size: 0.95rem; font-weight: bold; text-transform: uppercase; border: none; border-radius: 4px; cursor: pointer; }
     .btn-undo { background-color: #607d8b; grid-column: span 2; height: 44px; font-size: 1rem;}
 
-    /* СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ВЫБОРА КОМАНД */
+    /* MODAL WINDOW STYLES */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .modal-content { background: #fff; padding: 16px; border-radius: 8px; width: 90%; max-width: 360px; box-sizing: border-box; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .modal-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; color: #2e7d32; text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 6px;}
@@ -66,7 +66,7 @@
     </div>
     <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('ang1', 1)">+1</button><div id="v_ang1" class="val-cell">0</div><div class="label-cell">Angriff</div><div id="v_ang2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('ang2', 2)">+1</button></div>
     <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('blk1', 1)">+1</button><div id="v_blk1" class="val-cell">0</div><div class="label-cell">Block</div><div id="v_blk2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('blk2', 2)">+1</button></div>
-    <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('ase1', 1)">+1</button><div id="v_ase1" class="val-cell">0</div><div class="label-cell">Asse</div><div id="v_ase2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('ase2', 2)">+1</button></div>
+    <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('ase1', 1)">+1</button><div id="v_blk1" style="display:none;"></div><div id="v_ase1" class="val-cell">0</div><div class="label-cell">Asse</div><div id="v_ase2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('ase2', 2)">+1</button></div>
     <div class="stat-row"><button class="btn-action btn-plus" onclick="clickPlus('fhl1', 2)">+1</button><div id="v_fhl1" class="val-cell">0</div><div class="label-cell">Fehler</div><div id="v_fhl2" class="val-cell">0</div><button class="btn-action btn-plus" onclick="clickPlus('fhl2', 1)">+1</button></div>
     <div class="punkte-row">
       <div class="punkte-val"><span class="serving-dot serve-left" id="serve1">●</span><span id="v_pts1">0</span></div>
@@ -87,36 +87,34 @@
   </div>
 </div>
 
-<!-- КРАСИВОЕ МОДАЛЬНОЕ ОКНО ДЛЯ ВЫБОРА ЛИГ И КОМАНД -->
+<!-- DEUTSCHE ALERTS UND MODAL TEXTE -->
 <div class="modal-overlay" id="teamModal">
   <div class="modal-content">
-    <div class="modal-title" id="modalTitle">Выбор команды</div>
+    <div class="modal-title" id="modalTitle">Teamauswahl</div>
     
-    <!-- Блок со списками из базы данных -->
     <div id="dbSelectBlock">
       <div class="modal-field">
-        <label>Выбрать Лигу:</label>
+        <label>Liga auswählen:</label>
         <select id="modalLeagueSelect" onchange="onModalLeagueChange()"></select>
       </div>
       <div class="modal-field">
-        <label>Выбрать Команду:</label>
+        <label>Team auswählen:</label>
         <select id="modalTeamSelect"></select>
       </div>
     </div>
 
-    <!-- Блок для ручного ввода (как раньше) -->
     <div id="manualInputBlock" style="display: none;">
       <div class="modal-field">
-        <label>Название команды (вручную):</label>
-        <input type="text" id="modalManualInput" placeholder="Введите имя...">
+        <label>Teamname (manuell):</label>
+        <input type="text" id="modalManualInput" placeholder="Name eingeben...">
       </div>
     </div>
 
-    <span class="toggle-input-mode" id="toggleModeBtn" onclick="toggleInputMode()">Переключить на ручной ввод</span>
+    <span class="toggle-input-mode" id="toggleModeBtn" onclick="toggleInputMode()">Auf manuelle Eingabe wechseln</span>
 
     <div class="modal-buttons">
-      <button class="btn-modal btn-modal-close" onclick="closeTeamModal()">Отмена</button>
-      <button class="btn-modal btn-modal-save" onclick="saveTeamModalSelection()">Сохранить</button>
+      <button class="btn-modal btn-modal-close" onclick="closeTeamModal()">Abbrechen</button>
+      <button class="btn-modal btn-modal-save" onclick="saveTeamModalSelection()">Speichern</button>
     </div>
   </div>
 </div>
@@ -126,57 +124,60 @@
   const FIREBASE_URL = `${FIREBASE_BASE_URL}/match.json`;
   const VMIX_URL = `${FIREBASE_BASE_URL}/vmix.json`;
 
-  let state = { team1Name: "Team A", team2Name: "Team B", team1Logo: "", team2Logo: "", ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, historyStr: "—", serve: 0, timeline: [], finalSetPts1: 0, finalSetPts2: 0 };
+  let state = { team1Name: "Team A", team2Name: "Team B", team1Logo: "", team2Logo: "", leagueId: "", ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, historyStr: "—", serve: 0, timeline: [], finalSetPts1: 0, finalSetPts2: 0 };
   let historyStack = [];
   let isSyncing = false;
 
-  // Локальные переменные для хранения структур данных
   let dbTournamentData = null;
   let dbTeamsDictionary = null;
-  let currentEditingTeamNum = 1; // 1 - хозяева, 2 - гости
+  let dbLeaguesDictionary = null; 
+  let currentEditingTeamNum = 1; 
   let isManualModeActive = false;
 
-  // Функция для очистки имени (совпадает с логикой ключей в create_dict.js)
   function cleanFirebaseKey(name) {
     return name.replace(/[\.\$\#\[\]\/]/g, '_').trim();
   }
 
-  // Загрузка списков турниров и справочника при старте
   function loadDatabaseStructures() {
     fetch(`${FIREBASE_BASE_URL}/tournament.json`).then(res => res.json()).then(data => { dbTournamentData = data; });
     fetch(`${FIREBASE_BASE_URL}/teams_dictionary.json`).then(res => res.json()).then(data => { dbTeamsDictionary = data; });
+    fetch(`${FIREBASE_BASE_URL}/leagues_dictionary.json`).then(res => res.json()).then(data => { dbLeaguesDictionary = data; });
   }
 
-  // Открытие модального окна
   function openTeamModal(teamNum) {
     currentEditingTeamNum = teamNum;
     isManualModeActive = false;
-    document.getElementById('modalTitle').innerText = (teamNum === 1) ? "Домашняя команда (1)" : "Гостевая команда (2)";
+    document.getElementById('modalTitle').innerText = (teamNum === 1) ? "Heimteam (1)" : "Auswärtsteam (2)";
     document.getElementById('dbSelectBlock').style.display = "block";
     document.getElementById('manualInputBlock').style.display = "none";
-    document.getElementById('toggleModeBtn').innerText = "Переключить на ручной ввод";
+    document.getElementById('toggleModeBtn').innerText = "Auf manuelle Eingabe wechseln";
     document.getElementById('modalManualInput').value = (teamNum === 1) ? state.team1Name : state.team2Name;
 
     const leagueSelect = document.getElementById('modalLeagueSelect');
-    leagueSelect.innerHTML = '<option value="">-- Выберите лигу --</option>';
+    leagueSelect.innerHTML = '<option value="">-- Liga wählen --</option>';
 
     if (dbTournamentData) {
       Object.keys(dbTournamentData).forEach(leagueId => {
         let opt = document.createElement('option');
         opt.value = leagueId;
-        opt.innerText = leagueId.toUpperCase().replace(/_/g, ' ');
+        
+        if (dbLeaguesDictionary && dbLeaguesDictionary[leagueId]) {
+          opt.innerText = dbLeaguesDictionary[leagueId].shortName || leagueId;
+        } else {
+          opt.innerText = leagueId.toUpperCase().replace(/_/g, ' ');
+        }
+        
         leagueSelect.appendChild(opt);
       });
     }
-    document.getElementById('modalTeamSelect').innerHTML = '<option value="">-- Сначала выберите лигу --</option>';
+    document.getElementById('modalTeamSelect').innerHTML = '<option value="">-- Zuerst Liga wählen --</option>';
     document.getElementById('teamModal').style.display = "flex";
   }
 
-  // Смена лиги в модальном окне -> перестраиваем список команд
   function onModalLeagueChange() {
     const leagueId = document.getElementById('modalLeagueSelect').value;
     const teamSelect = document.getElementById('modalTeamSelect');
-    teamSelect.innerHTML = '<option value="">-- Выберите команду --</option>';
+    teamSelect.innerHTML = '<option value="">-- Team wählen --</option>';
 
     if (leagueId && dbTournamentData && dbTournamentData[leagueId] && dbTournamentData[leagueId].standings) {
       dbTournamentData[leagueId].standings.forEach(team => {
@@ -188,17 +189,16 @@
     }
   }
 
-  // Переключение между выпадающими списками и обычным текстовым полем ввода
   function toggleInputMode() {
     isManualModeActive = !isManualModeActive;
     if (isManualModeActive) {
       document.getElementById('dbSelectBlock').style.display = "none";
       document.getElementById('manualInputBlock').style.display = "block";
-      document.getElementById('toggleModeBtn').innerText = "Переключить на списки базы";
+      document.getElementById('toggleModeBtn').innerText = "Auf Auswahllisten wechseln";
     } else {
       document.getElementById('dbSelectBlock').style.display = "block";
       document.getElementById('manualInputBlock').style.display = "none";
-      document.getElementById('toggleModeBtn').innerText = "Переключить на ручной ввод";
+      document.getElementById('toggleModeBtn').innerText = "Auf manuelle Eingabe wechseln";
     }
   }
 
@@ -206,7 +206,6 @@
     document.getElementById('teamModal').style.display = "none";
   }
 
-  // Сохранение выбора из модального окна
   function saveTeamModalSelection() {
     saveHistory();
     let finalName = "";
@@ -214,23 +213,24 @@
 
     if (isManualModeActive) {
       finalName = document.getElementById('modalManualInput').value.trim();
+      state.leagueId = ""; 
     } else {
       const selectedTeamRaw = document.getElementById('modalTeamSelect').value;
       if (!selectedTeamRaw) {
-        alert("Пожалуйста, выберите команду или переключитесь на ручной ввод.");
+        alert("Bitte wählen Sie ein Team aus.");
         return;
       }
       finalName = selectedTeamRaw;
       
-      // Ищем короткое имя и логотип в справочнике teams_dictionary
+      const leagueSelect = document.getElementById('modalLeagueSelect');
+      if (leagueSelect && leagueSelect.value) {
+        state.leagueId = leagueSelect.value;
+      }
+      
       const safeKey = cleanFirebaseKey(selectedTeamRaw);
       if (dbTeamsDictionary && dbTeamsDictionary[safeKey]) {
-        if (dbTeamsDictionary[safeKey].shortName) {
-          finalName = dbTeamsDictionary[safeKey].shortName;
-        }
-        if (dbTeamsDictionary[safeKey].logo) {
-          finalLogo = dbTeamsDictionary[safeKey].logo;
-        }
+        if (dbTeamsDictionary[safeKey].shortName) finalName = dbTeamsDictionary[safeKey].shortName;
+        if (dbTeamsDictionary[safeKey].logo) finalLogo = dbTeamsDictionary[safeKey].logo;
       }
     }
 
@@ -256,13 +256,11 @@
     state.manualMode = true; 
     updateUI();
     sendToFirebase();
-    fetch(`${FIREBASE_BASE_URL}/manual_serve.json`, 
-        { method: "PUT", body: JSON.stringify({active: true}) });
+    fetch(`${FIREBASE_BASE_URL}/manual_serve.json`, { method: "PUT", body: JSON.stringify({active: true}) });
     setTimeout(() => { 
         delete state.manualMode; 
         sendToFirebase(); 
-        fetch(`${FIREBASE_BASE_URL}/manual_serve.json`, 
-            { method: "PUT", body: JSON.stringify({active: false}) });
+        fetch(`${FIREBASE_BASE_URL}/manual_serve.json`, { method: "PUT", body: JSON.stringify({active: false}) });
     }, 2000);
   }
 
@@ -324,12 +322,13 @@
   function syncFromFirebase() {
     if (isSyncing) return;
     fetch(FIREBASE_URL).then(res => res.json()).then(data => { if (data) { 
-      // Сохраняем логотипы, если они пришли из базы при синхронизации других пультов
       const l1 = state.team1Logo;
       const l2 = state.team2Logo;
+      const lid = state.leagueId;
       state = data; 
       if(!state.team1Logo) state.team1Logo = l1;
       if(!state.team2Logo) state.team2Logo = l2;
+      if(!state.leagueId) state.leagueId = lid;
       updateUI(); 
     } });
   }
@@ -345,13 +344,30 @@
     else if (ballStatus.mb2) activeBall = "Matchball2";
     else if (ballStatus.sb1) activeBall = "Satzball1";
     else if (ballStatus.sb2) activeBall = "Satzball2";
+
+    let lFull = "";
+    let lShort = "";
+    let lMicro = "";
+    if (state.leagueId && dbLeaguesDictionary && dbLeaguesDictionary[state.leagueId]) {
+      lFull = dbLeaguesDictionary[state.leagueId].fullName || "";
+      lShort = dbLeaguesDictionary[state.leagueId].shortName || "";
+      lMicro = dbLeaguesDictionary[state.leagueId].microName || "";
+    } else if (state.leagueId) {
+      lShort = state.leagueId.toUpperCase().replace(/_/g, ' ');
+    }
     
     let vmixData = { 
       pts1: state.pts1, pts2: state.pts2, set1: state.set1, set2: state.set2, 
       ang1: state.ang1, ang2: state.ang2, blk1: state.blk1, blk2: state.blk2, 
       ase1: state.ase1, ase2: state.ase2, fhl1: state.fhl1, fhl2: state.fhl2, 
       team1Name: state.team1Name, team2Name: state.team2Name, 
-      team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "", // Передаем пути к логотипам в vMix
+      team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "",
+      
+      league_full: lFull,
+      league_short: lShort,
+      league_micro: lMicro,
+      league: lShort, 
+
       historyStr: state.historyStr,
       lastFinishedSet: (state.currentSet - 1),
       serve1: state.serve === 1 ? "●" : "", serve2: state.serve === 2 ? "●" : "",
@@ -425,6 +441,7 @@
       state = { 
         team1Name: state.team1Name, team2Name: state.team2Name, 
         team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "",
+        leagueId: state.leagueId || "",
         ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, 
         pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, 
         historyStr: "—", serve: 0, timeline: [], 
