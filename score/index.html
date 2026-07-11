@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Score v4.2.5</title>
+  <title>Score v4.2.7</title>
   
   <link rel="apple-touch-icon" href="https://i.ibb.co/Z6Hcnvf9/image.png">
   <link rel="shortcut icon" href="https://i.ibb.co/Z6Hcnvf9/image.png" type="image/png">
@@ -33,9 +33,8 @@
     .serving-dot { position: absolute; top: 4px; font-size: 0.8rem; color: #2e7d32; display: none; }
     .serve-left { left: 12px; } .serve-right { right: 12px; }
     
-    /* СЕТЫ И НИЖНЯЯ ОСЬ УПРАВЛЕНИЯ */
+    /* СЕТЫ И ИНТЕРФЕЙС УПРАВЛЕНИЯ */
     .satz-row { display: grid; grid-template-columns: 1fr 45px 120px 45px 1fr; align-items: start; margin-top: 8px; gap: 4px; }
-    .control-btn-block { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; box-sizing: border-box; }
     
     .btn-satz-inc { 
       background-color: #2e7d32; 
@@ -53,32 +52,43 @@
     }
     .btn-satz-inc:active { transform: scale(0.95); }
 
-    .timeout-dots { display: flex; gap: 6px; justify-content: center; height: 12px; align-items: center; }
-    .t-dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #546e7a; background-color: #ffffff; transition: background 0.3s; }
-    .t-dot.used { background-color: #78909c; border-color: #37474f; }
+    /* Контейнер точек внутри кнопки (вертикальный ряд) */
+    .timeout-dots { display: flex; flex-direction: column; gap: 4px; justify-content: center; align-items: center; position: absolute; top: 50%; transform: translateY(-50%); }
+    .t-dot { width: 6px; height: 6px; border-radius: 50%; border: 1px solid #37474f; background-color: #ffffff; transition: background 0.3s; }
+    .t-dot.used { background-color: #37474f; border-color: #111; opacity: 0.4; }
     
     .satz-val { background: #cfd8dc; font-size: 1.4rem; font-weight: bold; padding: 0; border-radius: 4px; border: 1px solid #78909c; width: 45px; display: flex; align-items: center; justify-content: center; height: 38px; box-sizing: border-box; }
     .history-cell { background: #fff; font-size: 0.85rem; font-weight: bold; padding: 0 2px; border-radius: 4px; border: 1px solid #78909c; color: #555; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: center; height: 38px; box-sizing: border-box; }
     
-    /* Единая нижняя ось для кнопок Auszeit и футболок */
+    /* Нижний ряд кнопок */
     .bottom-actions-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; width: 100%; grid-column: span 5; margin-top: 4px; }
     
     .btn-timeout { 
       background-color: #78909c; 
       height: 38px; 
-      font-size: 1.2rem; 
+      font-size: 1.1rem; 
       border: 1px solid #546e7a; 
       border-radius: 6px; 
       color: white; 
       cursor: pointer; 
       display: flex; 
       align-items: center; 
-      justify-content: center; 
+      justify-content: center; /* Центрируем основное содержимое */
+      padding: 0 6px;
+      position: relative; /* Для абсолютного позиционирования точек */
       transition: background 0.2s, transform 0.05s; 
       box-sizing: border-box;
     }
     .btn-timeout:active { transform: scale(0.95); }
     .btn-timeout.active { background-color: #f57c00 !important; border-color: #b35100; animation: blink 1s infinite; }
+
+    /* Центрируем сам эмодзи внутри кнопки */
+    .btn-timeout > span { margin: auto; }
+
+    /* Позиционирование точек для левой кнопки (у правого внутреннего края) */
+    #btn_to1 .timeout-dots { right: 6px; }
+    /* Позиционирование точек для правой кнопки (у левого внутреннего края) */
+    #btn_to2 .timeout-dots { left: 6px; }
 
     .btn-jersey { 
       background-color: #ffffff; 
@@ -143,38 +153,38 @@
     
     <div class="satz-row">
       <!-- ВЕРХНИЙ РЯД: СЕТЫ И ИСТОРИЯ -->
-      <div class="control-btn-block">
-        <button class="btn-satz-inc" onclick="changeSetScore(1, 1)">+1</button>
-        <div class="timeout-dots" id="dots_to1">
-          <div class="t-dot" id="t1_d1"></div>
-          <div class="t-dot" id="t1_d2"></div>
-        </div>
-      </div>
-      
+      <button class="btn-satz-inc" onclick="changeSetScore(1, 1)">+1</button>
       <div id="v_set1" class="satz-val">0</div>
       <div id="v_history" class="history-cell">—</div>
       <div id="v_set2" class="satz-val">0</div>
-      
-      <div class="control-btn-block">
-        <button class="btn-satz-inc" onclick="changeSetScore(2, 1)">+1</button>
-        <div class="timeout-dots" id="dots_to2">
-          <div class="t-dot" id="t2_d1"></div>
-          <div class="t-dot" id="t2_d2"></div>
-        </div>
-      </div>
+      <button class="btn-satz-inc" onclick="changeSetScore(2, 1)">+1</button>
 
-      <!-- НИЖНИЙ РЯД: ВСЕ КНОПКИ ДЕЙСТВИЙ НА ОДНОЙ ОСИ -->
+      <!-- НИЖНИЙ РЯД: ДЕЙСТВИЯ (ИНДИКАТОРЫ ТАЙМ-АУТОВ ВНУТРИ КНОПОК) -->
       <div class="bottom-actions-row">
-        <button class="btn-timeout" id="btn_to1" onclick="triggerTimeout(1)">⏱️</button>
+        <button class="btn-timeout" id="btn_to1" onclick="triggerTimeout(1)">
+          <span>⏱️</span>
+          <div class="timeout-dots">
+            <div class="t-dot" id="t1_d1"></div>
+            <div class="t-dot" id="t1_d2"></div>
+          </div>
+        </button>
         <button class="btn-jersey" id="btn_jersey1">
           👕
-          <input type="color" class="color-picker" id="picker_color1" value="#ffffff" onchange="changeTeamColor(1, this.value)">
+          <!-- Заменено на oninput для мгновенной отправки цвета с ПК без закрытия окна -->
+          <input type="color" class="color-picker" id="picker_color1" value="#ffffff" oninput="changeTeamColor(1, this.value)">
         </button>
         <button class="btn-jersey" id="btn_jersey2">
           👕
-          <input type="color" class="color-picker" id="picker_color2" value="#ffffff" onchange="changeTeamColor(2, this.value)">
+          <!-- Заменено на oninput для мгновенной отправки цвета с ПК без закрытия окна -->
+          <input type="color" class="color-picker" id="picker_color2" value="#ffffff" oninput="changeTeamColor(2, this.value)">
         </button>
-        <button class="btn-timeout" id="btn_to2" onclick="triggerTimeout(2)">⏱️</button>
+        <button class="btn-timeout" id="btn_to2" onclick="triggerTimeout(2)">
+          <span>⏱️</span>
+          <div class="timeout-dots">
+            <div class="t-dot" id="t2_d1"></div>
+            <div class="t-dot" id="t2_d2"></div>
+          </div>
+        </button>
       </div>
     </div>
     
@@ -398,7 +408,8 @@
   }
 
   function changeTeamColor(teamNum, hexColor) {
-    saveHistory();
+    // В отличие от других действий, мы не пишем много логов в историю во время drag-and-drop,
+    // но сразу обновляем данные и отправляем их
     state[`teamColor${teamNum}`] = hexColor;
     updateUI();
     sendToFirebase();
