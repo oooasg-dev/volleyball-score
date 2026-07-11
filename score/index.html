@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Score v4.1.1</title>
+  <title>Score v4.1.3</title>
   
   <!-- Вот они, твои иконки и настройки для домашнего экрана! -->
   <link rel="apple-touch-icon" href="https://i.ibb.co/Z6Hcnvf9/image.png">
@@ -12,7 +12,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Score Web">
 
-  
   <style>
     body { font-family: Arial, sans-serif; background: #d4ebd5; text-align: center; margin: 0; padding: 8px; color: #333; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
     .phone-wrapper { max-width: 420px; margin: 0 auto; }
@@ -35,24 +34,57 @@
     .serving-dot { position: absolute; top: 4px; font-size: 0.8rem; color: #2e7d32; display: none; }
     .serve-left { left: 12px; } .serve-right { right: 12px; }
     
-    /* СТИЛИ ДЛЯ АВТОМАТИЧЕСКИХ СЕТОВ И ТАЙМ-АУТОВ */
-    .satz-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
-    /* Управляет шириной всего блока (сделали чуть уже: со 125px до 110px) */
-    .control-btn-block { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 110px; }
+    /* СТИЛИ ДЛЯ СЕТОВ И ТАЙМ-АУТОВ */
+    .satz-row { display: grid; grid-template-columns: 1fr 45px 120px 45px 1fr; align-items: center; margin-top: 8px; gap: 4px; }
+    .control-btn-block { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; box-sizing: border-box; }
     
-    /* Кнопка тайм-аута (сделали выше: с 35px до 46px) */
-    .btn-timeout { background-color: #78909c; height: 46px; font-size: 1.6rem; width: 100%; border: none; border-radius: 4px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.3s; }
-    .btn-timeout.active { background-color: #f57c00 !important; animation: blink 1s infinite; }
-    
-    /* Кнопка +1 Сет (тоже сделали выше: с 32px до 42px) */
-    .btn-satz-inc { background-color: #2e7d32; height: 42px; font-size: 0.95rem; width: 100%; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-    .timeout-dots { display: flex; gap: 6px; justify-content: center; margin-top: 2px; }
-    .t-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #546e7a; background-color: #ffffff; transition: background 0.3s; }
+    /* Кнопка +1 Сет (Теперь сверху) */
+    .btn-satz-inc { 
+      background-color: #2e7d32; 
+      height: 38px; 
+      font-size: 0.85rem; 
+      width: 100%; 
+      border: 1px solid #1b5e20; 
+      border-radius: 6px; 
+      color: white; 
+      font-weight: bold; 
+      cursor: pointer; 
+      text-transform: uppercase; 
+      transition: background 0.2s, transform 0.05s;
+      box-sizing: border-box;
+    }
+    .btn-satz-inc:active { 
+      transform: scale(0.95); 
+    }
+
+    /* Кнопка тайм-аута (Теперь снизу) */
+    .btn-timeout { 
+      background-color: #78909c; 
+      height: 38px; 
+      font-size: 1.3rem; 
+      width: 100%; 
+      border: 1px solid #546e7a; 
+      border-radius: 6px; 
+      color: white; 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      transition: background 0.2s, transform 0.05s; 
+      box-sizing: border-box;
+    }
+    .btn-timeout:active { 
+      transform: scale(0.95); 
+    }
+    .btn-timeout.active { background-color: #f57c00 !important; border-color: #b35100; animation: blink 1s infinite; }
+
+    .timeout-dots { display: flex; gap: 6px; justify-content: center; margin: 2px 0; }
+    .t-dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid #546e7a; background-color: #ffffff; transition: background 0.3s; }
     .t-dot.used { background-color: #78909c; border-color: #37474f; }
     
-    /* Высота ячеек счета сетов и истории (подровняли под новые высокие кнопки) */
-    .satz-val { background: #cfd8dc; font-size: 1.4rem; font-weight: bold; padding: 6px 0; border-radius: 4px; border: 1px solid #78909c; width: 45px; display: flex; align-items: center; justify-content: center; height: 46px; box-sizing: border-box; }
-    .history-cell { background: #fff; font-size: 0.85rem; font-weight: bold; padding: 8px 2px; border-radius: 4px; border: 1px solid #78909c; color: #555; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: center; height: 46px; box-sizing: border-box; }
+    /* Выравнивание ячеек результата по высоте кнопок Satz (+1) */
+    .satz-val { background: #cfd8dc; font-size: 1.4rem; font-weight: bold; padding: 0; border-radius: 4px; border: 1px solid #78909c; width: 45px; display: flex; align-items: center; justify-content: center; height: 38px; box-sizing: border-box; align-self: start; margin-top: 0; }
+    .history-cell { background: #fff; font-size: 0.85rem; font-weight: bold; padding: 0 2px; border-radius: 4px; border: 1px solid #78909c; color: #555; width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; justify-content: center; height: 38px; box-sizing: border-box; align-self: start; margin-top: 0; }
     
     .timeline-container { background: #eceff1; border: 2px solid #78909c; border-radius: 6px; margin: 10px 0; padding: 6px; }
     .timeline-title { font-size: 0.8rem; font-weight: bold; color: #37474f; text-transform: uppercase; margin-bottom: 4px; }
@@ -64,7 +96,7 @@
 
     /* MODAL WINDOW STYLES */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: #fff; padding: 166px; padding: 16px; border-radius: 8px; width: 90%; max-width: 360px; box-sizing: border-box; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    .modal-content { background: #fff; padding: 16px; border-radius: 8px; width: 90%; max-width: 360px; box-sizing: border-box; text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
     .modal-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; color: #2e7d32; text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 6px;}
     .modal-field { margin-bottom: 12px; }
     .modal-field label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; color: #555; }
@@ -101,12 +133,12 @@
     <div class="satz-row">
       <!-- CONTROL HEIM -->
       <div class="control-btn-block">
-        <button class="btn-timeout" id="btn_to1" onclick="triggerTimeout(1)">⏱️</button>
+        <button class="btn-satz-inc" onclick="changeSetScore(1, 1)">+1</button>
         <div class="timeout-dots" id="dots_to1">
           <div class="t-dot" id="t1_d1"></div>
           <div class="t-dot" id="t1_d2"></div>
         </div>
-        <button class="btn-satz-inc" onclick="changeSetScore(1, 1)">+1</button>
+        <button class="btn-timeout" id="btn_to1" onclick="triggerTimeout(1)">⏱️</button>
       </div>
       
       <div id="v_set1" class="satz-val">0</div>
@@ -115,12 +147,12 @@
       
       <!-- CONTROL GAST -->
       <div class="control-btn-block">
-        <button class="btn-timeout" id="btn_to2" onclick="triggerTimeout(2)">⏱️</button>
+        <button class="btn-satz-inc" onclick="changeSetScore(2, 1)">+1</button>
         <div class="timeout-dots" id="dots_to2">
           <div class="t-dot" id="t2_d1"></div>
           <div class="t-dot" id="t2_d2"></div>
         </div>
-        <button class="btn-satz-inc" onclick="changeSetScore(2, 1)">+1</button>
+        <button class="btn-timeout" id="btn_to2" onclick="triggerTimeout(2)">⏱️</button>
       </div>
     </div>
     
@@ -170,7 +202,6 @@
   const FIREBASE_URL = `${FIREBASE_BASE_URL}/match.json`;
   const VMIX_URL = `${FIREBASE_BASE_URL}/vmix.json`;
 
-  // Добавили в состояние учет тайм-аутов (осталось) и их текущую активность
   let state = { 
     team1Name: "Team A", team2Name: "Team B", team1Logo: "", team2Logo: "", leagueId: "", 
     ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, 
@@ -314,9 +345,7 @@
     }, 2000);
   }
 
-  // Логика вызова тайм-аута (Auszeit)
   function triggerTimeout(teamNum) {
-    // Если тайм-аут уже активен — повторное нажатие выключает его досрочно
     if (state[`timeoutActive${teamNum}`]) {
       saveHistory();
       state[`timeoutActive${teamNum}`] = false;
@@ -326,7 +355,6 @@
       return;
     }
 
-    // Проверяем, остались ли доступные тайм-ауты
     if (state[`timeoutsLeft${teamNum}`] <= 0) {
       alert("Keine Auszeiten mehr übrig in diesem Satz!");
       return;
@@ -338,7 +366,6 @@
     updateUI();
     sendToFirebase();
 
-    // Автоматическое выключение тайм-аута через 30 секунд
     if (timeoutTimers[teamNum]) clearTimeout(timeoutTimers[teamNum]);
     timeoutTimers[teamNum] = setTimeout(() => {
       state[`timeoutActive${teamNum}`] = false;
@@ -378,13 +405,11 @@
     document.getElementById('serve1').style.display = state.serve === 1 ? 'block' : 'none';
     document.getElementById('serve2').style.display = state.serve === 2 ? 'block' : 'none';
     
-    // Обновление подсветки кнопок Auszeit
     const btnTo1 = document.getElementById('btn_to1');
     const btnTo2 = document.getElementById('btn_to2');
     if (state.timeoutActive1) btnTo1.classList.add('active'); else btnTo1.classList.remove('active');
     if (state.timeoutActive2) btnTo2.classList.add('active'); else btnTo2.classList.remove('active');
 
-    // Обновление белых/серых точек тайм-аутов на экране пульта
     let left1 = state.timeoutsLeft1 !== undefined ? state.timeoutsLeft1 : 2;
     let left2 = state.timeoutsLeft2 !== undefined ? state.timeoutsLeft2 : 2;
     
@@ -459,13 +484,10 @@
       team1Name: state.team1Name, team2Name: state.team2Name, 
       team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "",
       league_full: lFull, league_short: lShort, league_micro: lMicro, league: lShort, 
-
-      // НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ vMIX (Активность тайм-аута и сколько осталось)
       auszeit_active1: state.timeoutActive1 ? "1" : "0",
       auszeit_active2: state.timeoutActive2 ? "1" : "0",
       auszeit_left1: state.timeoutsLeft1 !== undefined ? state.timeoutsLeft1 : 2,
       auszeit_left2: state.timeoutsLeft2 !== undefined ? state.timeoutsLeft2 : 2,
-
       historyStr: state.historyStr,
       lastFinishedSet: (state.currentSet - 1),
       serve1: state.serve === 1 ? "●" : "", serve2: state.serve === 2 ? "●" : "",
@@ -503,7 +525,6 @@
       if (state.set1 < 3 && state.set2 < 3) {
         state.currentSet++; 
         state.pts1 = 0; state.pts2 = 0; state.timeline = []; 
-        // Автоматический сброс тайм-аутов при переходе в новую партию!
         state.timeoutsLeft1 = 2; state.timeoutsLeft2 = 2;
         state.timeoutActive1 = false; state.timeoutActive2 = false;
       }
@@ -532,7 +553,6 @@
       saveHistory(); 
       state.ang1 = 0; state.ang2 = 0; state.blk1 = 0; state.blk2 = 0; state.ase1 = 0; state.ase2 = 0; state.fhl1 = 0; state.fhl2 = 0; 
       state.pts1 = 0; state.pts2 = 0; state.timeline = []; state.finalSetPts1 = 0; state.finalSetPts2 = 0;
-      // При сбросе сета возвращаем тайм-ауты этой партии обратно
       state.timeoutsLeft1 = 2; state.timeoutsLeft2 = 2;
       state.timeoutActive1 = false; state.timeoutActive2 = false;
       updateUI(); 
