@@ -1,11 +1,10 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const cron = require('node-cron');
 
-// Базовый URL турниров в Firebase (теперь без жесткого указания конкретного файла в конце)
+// Базовый URL турниров в Firebase
 const DB_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/tournament";
 
-// Список ваших лиг: сюда можно легко добавлять новые строчки в будущем
+// Список ваших лиг
 const LEAGUES = [
   {
     id: "dritte_liga_west",
@@ -91,7 +90,6 @@ async function parseSingleLeague(league) {
     const now = new Date();
     const formattedDate = now.toLocaleString('ru-RU', { timeZone: 'Europe/Berlin' });
 
-    // Отправляем данные в индивидуальную подпапку конкретной лиги
     const targetUrl = `${DB_BASE_URL}/${league.id}.json`;
     await axios.put(targetUrl, {
       lastUpdated: formattedDate,
@@ -105,7 +103,6 @@ async function parseSingleLeague(league) {
   }
 }
 
-// Главная функция, которая по очереди запускает конвейер для всех лиг
 async function parseAllLeagues() {
   console.log("=== Старт общего цикла парсинга лиг ===");
   for (const league of LEAGUES) {
@@ -114,8 +111,5 @@ async function parseAllLeagues() {
   console.log("=== Все лиги успешно обработаны ===");
 }
 
-// Расписание: запускать конвейер каждые 6 часов
-cron.schedule('0 */6 * * *', () => { parseAllLeagues(); });
-
-// Первый проверочный запуск сразу при старте скрипта
+// Запускаем процесс один раз при старте
 parseAllLeagues();
