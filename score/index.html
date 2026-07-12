@@ -571,7 +571,7 @@
     let target = state.currentSet === 5 ? 15 : 25; 
     if ((state.pts1 >= target && (state.pts1 - state.pts2) >= 2) || (state.pts2 >= target && (state.pts2 - state.pts1) >= 2)) { 
       state.finalSetPts1 = state.pts1; state.finalSetPts2 = state.pts2;
-      state.historyStr = (state.historyStr === "—" ? "" : state.historyStr + "   ") + `${state.pts1}:${state.pts2}`;
+      state.historyStr = (state.historyStr === "—" ? "" : state.historyStr + "\u00A0\u00A0") + `${state.pts1}:${state.pts2}`;
       state.pts1 > state.pts2 ? state.set1++ : state.set2++; 
       
       if (state.set1 < 3 && state.set2 < 3) {
