@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -87,7 +86,7 @@
     let homeSide = 'top'; 
     let currentSide = '';
     let lastServe = 0; 
-    let currentPresenter = { num: "-", name: "-", role: "-" };
+    let currentPresenter = { num: "-", name: "-", role: "-", team_status: "-" };
     const roleOrder = ["Zuspieler", "Aussenangriff", "Mittelblock", "Diagonal", "Aussenangriff", "Mittelblock"];
     let isSyncing = false;
 
@@ -142,6 +141,7 @@
             presenter_num:  currentPresenter.num  || "-",
             presenter_name: currentPresenter.name || "-",
             presenter_role: currentPresenter.role || "-",
+            presenter_team_status: currentPresenter.team_status || "-",
 
             heim_wechs_in_Name1: homeData.historySubs[0].in.name || "-", 
             heim_wechs_in_Num1: homeData.historySubs[0].in.num || "-",
@@ -191,7 +191,7 @@
             libero_gast_role2: awayLiberos[1] ? "Libero" : "-",
 
             liste_heim_num1: homeList[0]?.num || "-", liste_heim_name1: homeList[0]?.name || "-",
-            liste_heim_num2: homeList[1]?.num || "-", liste_heim_name2: homeList[1]?.name || "-",
+            liste_heim_num2: homeList[1]?.num || "-", liste_heim_name1: homeList[1]?.name || "-",
             liste_heim_num3: homeList[2]?.num || "-", liste_heim_name3: homeList[2]?.name || "-",
             liste_heim_num4: homeList[3]?.num || "-", liste_heim_name4: homeList[3]?.name || "-",
             liste_heim_num5: homeList[4]?.num || "-", liste_heim_name5: homeList[4]?.name || "-",
@@ -317,7 +317,13 @@
             d.className = 'bench-item'; 
             d.innerText = `${person.num ? person.num + ' ' : ''}${person.name}${person.role ? ' (' + person.role + ')' : ''}`;
             d.onclick = () => { 
-                const selected = { num: person.num, name: person.name, role: person.role };
+                const status = (currentSide === homeSide) ? "heim" : "gast";
+                const selected = { 
+                    num: person.num, 
+                    name: person.name, 
+                    role: person.role,
+                    team_status: status 
+                };
                 currentPresenter = selected;
                 pushServerToFirebase(); 
                 closeModal('caster'); 
