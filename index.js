@@ -1,5 +1,3 @@
-
-Index · JS
 const axios = require('axios');
 const cheerio = require('cheerio');
 
@@ -302,13 +300,3 @@ async function parseAllLeagues() {
 
 // Запускаем процесс один раз при старте
 parseAllLeagues();
-
-
-
-
-
-
-
-
-
-
