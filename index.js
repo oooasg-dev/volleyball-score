@@ -1,13 +1,12 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// Базовые URL для турниров и истории на одном уровне в корне Firebase
+// Четкое разделение: текущие таблицы идут в tournament, история — в history
 const TOURNAMENT_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/tournament";
 const HISTORY_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/history";
 
 // Расписание лиги dritte_liga_west: сколько игр запланировано на каждую конкретную
 // календарную дату и сколько игр по лиге накопится к этой дате нарастающим итогом.
-// Составлено из официального Spielplan (CSV) на сезон 2026/27.
 const SCHEDULE_DRITTE_LIGA_WEST = [
   { date: "2026-09-19", games: 6, cumulativeGames: 6 },
   { date: "2026-09-26", games: 6, cumulativeGames: 12 },
@@ -28,8 +27,6 @@ const SCHEDULE_DRITTE_LIGA_WEST = [
   { date: "2026-11-29", games: 2, cumulativeGames: 64 },
   { date: "2026-12-05", games: 5, cumulativeGames: 69 },
   { date: "2026-12-06", games: 1, cumulativeGames: 70 },
-  { date: "2026-12-12", games: 6, cumulativeGames: 76 },
-  { date: "2026-12-19", games: 3, cumulativeGames: 79 },
   { date: "2027-01-09", games: 5, cumulativeGames: 84 },
   { date: "2027-01-16", games: 4, cumulativeGames: 88 },
   { date: "2027-01-17", games: 2, cumulativeGames: 90 },
@@ -48,9 +45,7 @@ const SCHEDULE_DRITTE_LIGA_WEST = [
   { date: "2027-03-21", games: 6, cumulativeGames: 132 },
 ];
 
-// Расписание лиги oberliga_1: сколько игр запланировано на каждую конкретную
-// календарную дату и сколько игр по лиге накопится к этой дате нарастающим итогом.
-// Составлено из официального Spielplan (CSV) на сезон 2026/27.
+// Расписание лиги oberliga_1
 const SCHEDULE_OBERLIGA_1 = [
   { date: "2026-09-12", games: 4, cumulativeGames: 4 },
   { date: "2026-09-26", games: 2, cumulativeGames: 6 },
@@ -84,7 +79,6 @@ const SCHEDULE_OBERLIGA_1 = [
   { date: "2027-04-24", games: 6, cumulativeGames: 90 },
 ];
 
-// Список ваших лиг
 const LEAGUES = [
   {
     id: "dritte_liga_west",
@@ -172,6 +166,7 @@ async function parseSingleLeague(league) {
     const now = new Date();
     const formattedDate = now.toLocaleString('ru-RU', { timeZone: 'Europe/Berlin' });
 
+    // Текущая таблица сохраняется в TOURNAMENT_BASE_URL (/tournament)
     const targetUrl = `${TOURNAMENT_BASE_URL}/${league.id}.json`;
     await axios.put(targetUrl, {
       lastUpdated: formattedDate,
@@ -180,7 +175,7 @@ async function parseSingleLeague(league) {
 
     console.log(`Успешно! Лига ${league.id} обновлена в Firebase (${formattedDate}). Команд: ${standings.length}`);
 
-    // --- СНИМКИ ИСТОРИИ ПО ДАТАМ ИГР (для графиков) ---
+    // --- СНИМКИ ИСТОРИИ ---
     await saveHistorySnapshotsIfNew(league, standings, formattedDate);
 
   } catch (error) {
@@ -188,7 +183,6 @@ async function parseSingleLeague(league) {
   }
 }
 
-// Суммарное число сыгранных матчей по всей лиге
 function getTotalGamesPlayed(standings) {
   const sum = standings.reduce((acc, t) => acc + (t.matches || 0), 0);
   return Math.round(sum / 2);
@@ -196,6 +190,8 @@ function getTotalGamesPlayed(standings) {
 
 async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
   const totalGamesPlayed = getTotalGamesPlayed(standings);
+  
+  // ИСТОРИЯ ТЕПЕРЬ СОХРАНЯЕТСЯ ЧЕРЕЗ HISTORY_BASE_URL В КОРЕНЬ (/history)
   const historyLeagueFolder = `${league.id}_history`;
   const metaUrl = `${HISTORY_BASE_URL}/${historyLeagueFolder}/_meta.json`;
 
@@ -204,7 +200,7 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
     const metaRes = await axios.get(metaUrl);
     if (metaRes.data) metaData = metaRes.data;
   } catch (e) {
-    // снимков ещё не было — начинаем с нуля
+    // снимков ещё не было
   }
 
   const lastTotalGamesPlayed = (metaData && typeof metaData.lastTotalGamesPlayed === 'number')
@@ -222,7 +218,7 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
     }))
   };
 
-  // --- ПРЕДСЕЗОННЫЙ БАЗОВЫЙ СНИМОК ---
+  // --- БАЗОВЫЙ СНИМОК ---
   if (!baselineSaved && league.schedule && league.schedule.length) {
     const firstDate = league.schedule[0].date;
     const beforeFirstDate = shiftIsoDate(firstDate, -1);
@@ -263,7 +259,7 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
     const historyUrl = `${HISTORY_BASE_URL}/${historyLeagueFolder}/${todayIso}.json`;
     try {
       await axios.put(historyUrl, { ...snapshotBase, date: todayIso, savedAt: formattedDate });
-      console.log(`Лига ${league.id}: сохранён снимок истории за ${todayIso} (без точного расписания).`);
+      console.log(`Лига ${league.id}: сохранён снимок истории за ${todayIso}.`);
     } catch (e) {
       console.error(`Ошибка сохранения снимка ${todayIso} для ${league.id}:`, e.message);
       return;
@@ -277,7 +273,6 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
   }
 }
 
-// Сдвигает дату в формате YYYY-MM-DD на указанное число дней
 function shiftIsoDate(isoDate, days) {
   const d = new Date(isoDate + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
@@ -292,5 +287,4 @@ async function parseAllLeagues() {
   console.log("=== Все лиги успешно обработаны ===");
 }
 
-// Запускаем процесс один раз при старте
 parseAllLeagues();
