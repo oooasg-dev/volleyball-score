@@ -1,8 +1,9 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 
-// Базовый URL турниров в Firebase
-const DB_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/tournament";
+// Базовые URL для турниров и истории на одном уровне в корне Firebase
+const TOURNAMENT_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/tournament";
+const HISTORY_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com/history";
 
 // Расписание лиги dritte_liga_west: сколько игр запланировано на каждую конкретную
 // календарную дату и сколько игр по лиге накопится к этой дате нарастающим итогом.
@@ -171,7 +172,7 @@ async function parseSingleLeague(league) {
     const now = new Date();
     const formattedDate = now.toLocaleString('ru-RU', { timeZone: 'Europe/Berlin' });
 
-    const targetUrl = `${DB_BASE_URL}/${league.id}.json`;
+    const targetUrl = `${TOURNAMENT_BASE_URL}/${league.id}.json`;
     await axios.put(targetUrl, {
       lastUpdated: formattedDate,
       standings: standings
@@ -179,7 +180,7 @@ async function parseSingleLeague(league) {
 
     console.log(`Успешно! Лига ${league.id} обновлена в Firebase (${formattedDate}). Команд: ${standings.length}`);
 
-    // --- СНИМКИ ИСТОРИИ ПО ДАТАМ ИГР (для bump-графика движения по местам) ---
+    // --- СНИМКИ ИСТОРИИ ПО ДАТАМ ИГР (для графиков) ---
     await saveHistorySnapshotsIfNew(league, standings, formattedDate);
 
   } catch (error) {
@@ -187,8 +188,7 @@ async function parseSingleLeague(league) {
   }
 }
 
-// Суммарное число сыгранных матчей по всей лиге (сумма "matches" всех команд / 2,
-// т.к. каждый матч засчитан обеим командам)
+// Суммарное число сыгранных матчей по всей лиге
 function getTotalGamesPlayed(standings) {
   const sum = standings.reduce((acc, t) => acc + (t.matches || 0), 0);
   return Math.round(sum / 2);
@@ -196,7 +196,8 @@ function getTotalGamesPlayed(standings) {
 
 async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
   const totalGamesPlayed = getTotalGamesPlayed(standings);
-  const metaUrl = `${DB_BASE_URL}/${league.id}_history/_meta.json`;
+  const historyLeagueFolder = `${league.id}_history`;
+  const metaUrl = `${HISTORY_BASE_URL}/${historyLeagueFolder}/_meta.json`;
 
   let metaData = null;
   try {
@@ -221,11 +222,11 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
     }))
   };
 
-  // --- ПРЕДСЕЗОННЫЙ БАЗОВЫЙ СНИМОК (точка отсчёта для графика, до первой игры) ---
+  // --- ПРЕДСЕЗОННЫЙ БАЗОВЫЙ СНИМОК ---
   if (!baselineSaved && league.schedule && league.schedule.length) {
     const firstDate = league.schedule[0].date;
     const beforeFirstDate = shiftIsoDate(firstDate, -1);
-    const baselineUrl = `${DB_BASE_URL}/${league.id}_history/${beforeFirstDate}.json`;
+    const baselineUrl = `${HISTORY_BASE_URL}/${historyLeagueFolder}/${beforeFirstDate}.json`;
     try {
       await axios.put(baselineUrl, { ...snapshotBase, date: beforeFirstDate, savedAt: formattedDate, baseline: true });
       console.log(`Лига ${league.id}: сохранён предсезонный базовый снимок за ${beforeFirstDate}.`);
@@ -236,7 +237,6 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
 
   if (totalGamesPlayed <= lastTotalGamesPlayed) {
     console.log(`Лига ${league.id}: новых сыгранных игр нет (${totalGamesPlayed}), снимок не нужен.`);
-    // Всё равно фиксируем, что базовый снимок сохранён, если это был первый запуск
     if (!baselineSaved) {
       try { await axios.put(metaUrl, { lastTotalGamesPlayed, baselineSaved: true }); } catch (e) {}
     }
@@ -244,28 +244,23 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
   }
 
   if (league.schedule && league.schedule.length) {
-    // Точная привязка к календарным датам игр по расписанию сезона.
-    // Идём по всем датам расписания, которые "закрылись" между прошлым
-    // и текущим прогоном, и сохраняем снимок под каждой из них отдельно —
-    // так суббота и воскресенье одного тура попадают в историю как две разные точки.
     const newlyCompletedDates = league.schedule.filter(
       d => d.cumulativeGames > lastTotalGamesPlayed && d.cumulativeGames <= totalGamesPlayed
     );
 
     for (const entry of newlyCompletedDates) {
-      const historyUrl = `${DB_BASE_URL}/${league.id}_history/${entry.date}.json`;
+      const historyUrl = `${HISTORY_BASE_URL}/${historyLeagueFolder}/${entry.date}.json`;
       try {
         await axios.put(historyUrl, { ...snapshotBase, date: entry.date, savedAt: formattedDate });
         console.log(`Лига ${league.id}: сохранён снимок истории за ${entry.date}.`);
       } catch (e) {
         console.error(`Ошибка сохранения снимка ${entry.date} для ${league.id}:`, e.message);
-        return; // не двигаем счётчик дальше, если запись не удалась
+        return; 
       }
     }
   } else {
-    // Расписание для этой лиги не зашито — сохраняем упрощённо, датой запуска скрипта.
     const todayIso = new Date().toISOString().slice(0, 10);
-    const historyUrl = `${DB_BASE_URL}/${league.id}_history/${todayIso}.json`;
+    const historyUrl = `${HISTORY_BASE_URL}/${historyLeagueFolder}/${todayIso}.json`;
     try {
       await axios.put(historyUrl, { ...snapshotBase, date: todayIso, savedAt: formattedDate });
       console.log(`Лига ${league.id}: сохранён снимок истории за ${todayIso} (без точного расписания).`);
@@ -275,7 +270,6 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
     }
   }
 
-  // Обновляем счётчик, только если все снимки успешно записались
   try {
     await axios.put(metaUrl, { lastTotalGamesPlayed: totalGamesPlayed, baselineSaved: true });
   } catch (e) {
@@ -283,7 +277,7 @@ async function saveHistorySnapshotsIfNew(league, standings, formattedDate) {
   }
 }
 
-// Сдвигает дату в формате YYYY-MM-DD на указанное число дней (может быть отрицательным)
+// Сдвигает дату в формате YYYY-MM-DD на указанное число дней
 function shiftIsoDate(isoDate, days) {
   const d = new Date(isoDate + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
