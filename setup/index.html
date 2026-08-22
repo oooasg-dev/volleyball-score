@@ -19,10 +19,12 @@
         .swap-container { display: flex; justify-content: center; align-items: center; height: 30px; }
         .swap-btn { background-color: #ff9800; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; color: white; font-size: 24px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         .controls-row { display: flex; justify-content: space-between; margin: 12px 0; }
-        .field { background-color: #b1bdc5; border-radius: 10px; height: 140px; position: relative; padding: 5px; }
-        .field-rows { display: flex; flex-direction: column; height: 100%; }
-        .row { flex: 1; display: flex; justify-content: space-around; align-items: center; }
+        .field { background-color: #b1bdc5; border-radius: 10px; position: relative; padding: 8px 5px; }
+        .field-rows { display: flex; flex-direction: column; gap: 6px; }
+        .row { display: flex; justify-content: space-around; align-items: flex-start; }
+        .player-wrap { display: flex; flex-direction: column; align-items: center; width: 58px; }
         .player { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 22px; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .player-name { margin-top: 3px; font-size: 10px; line-height: 1.15; font-weight: 600; color: #333; text-align: center; max-width: 58px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
         .color-blue { background-color: #008cc9; }
         .color-gray { background-color: #6e6e6e; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; width: 280px; }
@@ -42,8 +44,16 @@
                 <button class="icon-btn" onclick="rotatePlayers('top', -1)">↻</button>
             </div>
             <div class="field"><div class="field-rows">
-                <div class="row"><button class="player color-blue" onclick="initSub('top', 0)"></button><button class="player color-blue" onclick="initSub('top', 1)"></button><button class="player color-blue" onclick="initSub('top', 2)"></button></div>
-                <div class="row"><button class="player color-blue" onclick="initSub('top', 3)"></button><button class="player color-blue" onclick="initSub('top', 4)"></button><button class="player color-blue" onclick="initSub('top', 5)"></button></div>
+                <div class="row">
+                    <div class="player-wrap"><button class="player color-blue" onclick="initSub('top', 0)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-blue" onclick="initSub('top', 1)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-blue" onclick="initSub('top', 2)"></button><span class="player-name"></span></div>
+                </div>
+                <div class="row">
+                    <div class="player-wrap"><button class="player color-blue" onclick="initSub('top', 3)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-blue" onclick="initSub('top', 4)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-blue" onclick="initSub('top', 5)"></button><span class="player-name"></span></div>
+                </div>
             </div></div>
         </div>
         
@@ -51,8 +61,16 @@
         
         <div class="side" id="bottom-side">
             <div class="field"><div class="field-rows">
-                <div class="row"><button class="player color-gray" onclick="initSub('bottom', 0)"></button><button class="player color-gray" onclick="initSub('bottom', 1)"></button><button class="player color-gray" onclick="initSub('bottom', 2)"></button></div>
-                <div class="row"><button class="player color-gray" onclick="initSub('bottom', 3)"></button><button class="player color-gray" onclick="initSub('bottom', 4)"></button><button class="player color-gray" onclick="initSub('bottom', 5)"></button></div>
+                <div class="row">
+                    <div class="player-wrap"><button class="player color-gray" onclick="initSub('bottom', 0)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-gray" onclick="initSub('bottom', 1)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-gray" onclick="initSub('bottom', 2)"></button><span class="player-name"></span></div>
+                </div>
+                <div class="row">
+                    <div class="player-wrap"><button class="player color-gray" onclick="initSub('bottom', 3)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-gray" onclick="initSub('bottom', 4)"></button><span class="player-name"></span></div>
+                    <div class="player-wrap"><button class="player color-gray" onclick="initSub('bottom', 5)"></button><span class="player-name"></span></div>
+                </div>
             </div></div>
             <div class="controls-row">
                 <button class="icon-btn" onclick="rotatePlayers('bottom', 1)">↺</button>
@@ -349,11 +367,16 @@
 
     function updateFieldDisplay(side) { 
         const btns = document.getElementById(side + '-side').querySelectorAll('.player'); 
+        const names = document.getElementById(side + '-side').querySelectorAll('.player-name'); 
         const map = (side === 'top') ? topMap : bottomMap; 
         btns.forEach((btn, i) => { 
             const p = teamState[side].onField[map[i]]; 
             btn.innerText = p.num; 
             btn.title = p.name + (p.role ? " (" + p.role + ")" : ""); 
+            if (names[i]) {
+                const nameParts = (p.name || '').trim().split(/\s+/);
+                names[i].innerText = nameParts.length ? nameParts[nameParts.length - 1] : '';
+            }
             btn.style.outline = (p.role === "Zuspieler") ? "2px solid white" : "none"; 
             btn.style.outlineOffset = "-2px"; 
         }); 
