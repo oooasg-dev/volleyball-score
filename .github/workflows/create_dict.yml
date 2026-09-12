@@ -1,0 +1,22 @@
+name: Generate Teams Dictionary
+
+on:
+  workflow_dispatch: # Включает кнопку ручного запуска в интерфейсе
+
+jobs:
+  generate-dict:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install axios cheerio
+
+      - name: Run dict generator
+        run: node create_dict.js
