@@ -7,52 +7,51 @@ const HISTORY_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com
 
 // Расписание лиги dritte_liga_west: сколько игр запланировано на каждую конкретную
 // календарную дату и сколько игр по лиге накопится к этой дате нарастающим итогом.
-// Пересчитано из официального экспорта DVV (Spielplan CSV) на 28.07.2026.
-// ВАЖНО: 2 игры (Spieltag 7 и Spieltag 21, по 1 игре в каждом) пока помечены
-// в календаре как "Termin folgt" (дата ещё не назначена) — они НЕ входят
-// в расписание ниже (итог по датам = 130 из 132 игр сезона). Когда DVV
-// назначит им дату, нужно добавить соответствующие строки вручную и
-// пересчитать cumulativeGames для всех дат после них.
+// Пересчитано ПОЛНОСТЬЮ заново из официального экспорта DVV (Spielplan CSV) на 12.09.2026.
+// Обе ранее не назначенные игры (Spieltag 7 и Spieltag 21) теперь имеют дату,
+// но заодно DVV перенёс ещё несколько игр между соседними турами (11.14↔11.15,
+// 12.12↔12.13) и добавил новую дату 30.10.2026 — все 132 игры сезона учтены.
 const SCHEDULE_DRITTE_LIGA_WEST = [
-  { date: "2026-09-19", games: 6, cumulativeGames: 6 },
-  { date: "2026-09-26", games: 6, cumulativeGames: 12 },
-  { date: "2026-10-03", games: 2, cumulativeGames: 14 },
-  { date: "2026-10-04", games: 4, cumulativeGames: 18 },
-  { date: "2026-10-10", games: 6, cumulativeGames: 24 },
-  { date: "2026-10-17", games: 5, cumulativeGames: 29 },
-  { date: "2026-10-18", games: 1, cumulativeGames: 30 },
-  { date: "2026-10-24", games: 4, cumulativeGames: 34 },
-  { date: "2026-10-25", games: 1, cumulativeGames: 35 },
+  { date: "2026-09-19", games: 5, cumulativeGames: 5 },
+  { date: "2026-09-26", games: 6, cumulativeGames: 11 },
+  { date: "2026-10-03", games: 2, cumulativeGames: 13 },
+  { date: "2026-10-04", games: 4, cumulativeGames: 17 },
+  { date: "2026-10-10", games: 6, cumulativeGames: 23 },
+  { date: "2026-10-17", games: 5, cumulativeGames: 28 },
+  { date: "2026-10-18", games: 1, cumulativeGames: 29 },
+  { date: "2026-10-24", games: 4, cumulativeGames: 33 },
+  { date: "2026-10-25", games: 1, cumulativeGames: 34 },
+  { date: "2026-10-30", games: 1, cumulativeGames: 35 },
   { date: "2026-10-31", games: 3, cumulativeGames: 38 },
   { date: "2026-11-01", games: 1, cumulativeGames: 39 },
   { date: "2026-11-07", games: 5, cumulativeGames: 44 },
-  { date: "2026-11-08", games: 1, cumulativeGames: 45 },
-  { date: "2026-11-14", games: 4, cumulativeGames: 49 },
-  { date: "2026-11-15", games: 2, cumulativeGames: 51 },
-  { date: "2026-11-21", games: 6, cumulativeGames: 57 },
-  { date: "2026-11-28", games: 3, cumulativeGames: 60 },
-  { date: "2026-11-29", games: 3, cumulativeGames: 63 },
-  { date: "2026-12-05", games: 5, cumulativeGames: 68 },
-  { date: "2026-12-06", games: 1, cumulativeGames: 69 },
-  { date: "2026-12-12", games: 5, cumulativeGames: 74 },
-  { date: "2026-12-13", games: 1, cumulativeGames: 75 },
-  { date: "2026-12-19", games: 3, cumulativeGames: 78 },
-  { date: "2027-01-09", games: 5, cumulativeGames: 83 },
-  { date: "2027-01-16", games: 3, cumulativeGames: 86 },
-  { date: "2027-01-17", games: 3, cumulativeGames: 89 },
-  { date: "2027-01-23", games: 5, cumulativeGames: 94 },
-  { date: "2027-01-24", games: 1, cumulativeGames: 95 },
-  { date: "2027-01-30", games: 3, cumulativeGames: 98 },
-  { date: "2027-01-31", games: 3, cumulativeGames: 101 },
-  { date: "2027-02-06", games: 4, cumulativeGames: 105 },
-  { date: "2027-02-07", games: 1, cumulativeGames: 106 },
-  { date: "2027-02-13", games: 4, cumulativeGames: 110 },
-  { date: "2027-02-14", games: 2, cumulativeGames: 112 },
-  { date: "2027-02-20", games: 6, cumulativeGames: 118 },
-  { date: "2027-02-21", games: 1, cumulativeGames: 119 },
-  { date: "2027-03-06", games: 3, cumulativeGames: 122 },
-  { date: "2027-03-07", games: 2, cumulativeGames: 124 },
-  { date: "2027-03-21", games: 6, cumulativeGames: 130 },
+  { date: "2026-11-08", games: 2, cumulativeGames: 46 },
+  { date: "2026-11-14", games: 3, cumulativeGames: 49 },
+  { date: "2026-11-15", games: 3, cumulativeGames: 52 },
+  { date: "2026-11-21", games: 6, cumulativeGames: 58 },
+  { date: "2026-11-28", games: 3, cumulativeGames: 61 },
+  { date: "2026-11-29", games: 3, cumulativeGames: 64 },
+  { date: "2026-12-05", games: 5, cumulativeGames: 69 },
+  { date: "2026-12-06", games: 1, cumulativeGames: 70 },
+  { date: "2026-12-12", games: 4, cumulativeGames: 74 },
+  { date: "2026-12-13", games: 2, cumulativeGames: 76 },
+  { date: "2026-12-19", games: 3, cumulativeGames: 79 },
+  { date: "2027-01-09", games: 5, cumulativeGames: 84 },
+  { date: "2027-01-16", games: 3, cumulativeGames: 87 },
+  { date: "2027-01-17", games: 3, cumulativeGames: 90 },
+  { date: "2027-01-23", games: 5, cumulativeGames: 95 },
+  { date: "2027-01-24", games: 1, cumulativeGames: 96 },
+  { date: "2027-01-30", games: 3, cumulativeGames: 99 },
+  { date: "2027-01-31", games: 3, cumulativeGames: 102 },
+  { date: "2027-02-06", games: 4, cumulativeGames: 106 },
+  { date: "2027-02-07", games: 1, cumulativeGames: 107 },
+  { date: "2027-02-13", games: 4, cumulativeGames: 111 },
+  { date: "2027-02-14", games: 2, cumulativeGames: 113 },
+  { date: "2027-02-20", games: 6, cumulativeGames: 119 },
+  { date: "2027-02-21", games: 1, cumulativeGames: 120 },
+  { date: "2027-03-06", games: 4, cumulativeGames: 124 },
+  { date: "2027-03-07", games: 2, cumulativeGames: 126 },
+  { date: "2027-03-21", games: 6, cumulativeGames: 132 },
 ];
 
 // Расписание лиги oberliga_1
@@ -89,6 +88,30 @@ const SCHEDULE_OBERLIGA_1 = [
   { date: "2027-04-24", games: 6, cumulativeGames: 90 },
 ];
 
+// Расписание лиги bezirksliga_m3_bremen_lueneburg
+// Собрано из официального экспорта DVV (Spielplan CSV) от 12.09.2026.
+// Все 72 игры сезона (9 команд, двойной круг) имеют назначенную дату — пропусков нет.
+const SCHEDULE_BEZIRKSLIGA_M3 = [
+  { date: "2026-09-12", games: 4, cumulativeGames: 4 },
+  { date: "2026-09-13", games: 2, cumulativeGames: 6 },
+  { date: "2026-09-26", games: 6, cumulativeGames: 12 },
+  { date: "2026-10-31", games: 4, cumulativeGames: 16 },
+  { date: "2026-11-07", games: 2, cumulativeGames: 18 },
+  { date: "2026-11-14", games: 6, cumulativeGames: 24 },
+  { date: "2026-11-28", games: 4, cumulativeGames: 28 },
+  { date: "2026-11-29", games: 2, cumulativeGames: 30 },
+  { date: "2026-12-05", games: 2, cumulativeGames: 32 },
+  { date: "2026-12-12", games: 4, cumulativeGames: 36 },
+  { date: "2027-01-16", games: 4, cumulativeGames: 40 },
+  { date: "2027-01-17", games: 2, cumulativeGames: 42 },
+  { date: "2027-02-06", games: 4, cumulativeGames: 46 },
+  { date: "2027-02-07", games: 2, cumulativeGames: 48 },
+  { date: "2027-02-20", games: 6, cumulativeGames: 54 },
+  { date: "2027-03-06", games: 6, cumulativeGames: 60 },
+  { date: "2027-04-10", games: 6, cumulativeGames: 66 },
+  { date: "2027-04-24", games: 6, cumulativeGames: 72 },
+];
+
 const LEAGUES = [
   {
     id: "dritte_liga_west",
@@ -99,6 +122,11 @@ const LEAGUES = [
     id: "oberliga_1",
     url: "https://nwvv.sams-server.de/cms/home/spielbetrieb/m_ligen/ol.xhtml?LeaguePresenter.view=resultTable&LeaguePresenter.matchSeriesId=115982957#samsCmsComponent_85424975",
     schedule: SCHEDULE_OBERLIGA_1
+  },
+  {
+    id: "bezirksliga_m3_bremen_lueneburg",
+    url: "https://nwvv.sams-server.de/cms/home/spielbetrieb/m_ligen_der_bezkonf/regv_lueneburg.xhtml?LeaguePresenter.view=resultTable&LeaguePresenter.matchSeriesId=115984826",
+    schedule: SCHEDULE_BEZIRKSLIGA_M3
   }
 ];
 
