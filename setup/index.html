@@ -16,8 +16,14 @@
         .side { background-color: #f8fff6; border: 2px solid #a8cfa3; padding: 12px; border-radius: 15px; position: relative; }
         .team-selector { background-color: #88c060; color: white; border: none; font-size: 18px; padding: 12px 0; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
         .icon-btn, .zoom-btn { background-color: #8b9dad; color: white; border: none; border-radius: 8px; width: 45px; height: 45px; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: bold; }
-        .swap-container { display: flex; justify-content: center; align-items: center; height: 30px; }
+        .swap-container { display: flex; justify-content: center; align-items: center; height: 30px; gap: 18px; }
         .swap-btn { background-color: #ff9800; border: none; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; color: white; font-size: 24px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
+        /* === НОВЫЙ БЛОК: СУДЬИ И КОММЕНТАТОРЫ (изолированные классы officials-*) === */
+        .officials-round-btn { background-color: #5c6bc0; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; color: white; font-size: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .officials-field { margin-bottom: 10px; }
+        .officials-field label { display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 3px; }
+        .officials-field input { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
         .controls-row { display: flex; justify-content: space-between; margin: 12px 0; }
         .field { background-color: #b1bdc5; border-radius: 10px; position: relative; padding: 8px 5px; }
         .field-rows { display: flex; flex-direction: column; gap: 6px; }
@@ -57,8 +63,12 @@
             </div></div>
         </div>
         
-        <div class="swap-container"><button class="swap-btn" onclick="swapSides()">⇄</button></div>
-        
+        <div class="swap-container">
+            <button class="officials-round-btn" onclick="openOfficialsModal('referees')" title="Schiedsrichter">⚖️</button>
+            <button class="swap-btn" onclick="swapSides()">⇄</button>
+            <button class="officials-round-btn" onclick="openOfficialsModal('commentators')" title="Kommentatoren">🎙️</button>
+        </div>
+
         <div class="side" id="bottom-side">
             <div class="field"><div class="field-rows">
                 <div class="row">
@@ -98,6 +108,20 @@
     <button onclick="toggleCasterEdit()" id="edit-btn">✏️ Ред.</button>
     <button onclick="saveCasterList()" id="save-btn" style="display:none;">💾 Сохр.</button>
     <button onclick="closeModal('caster')">Закрыть</button>
+</div>
+
+<div id="officials-modal" class="modal">
+    <h3 id="officials-title">Schiedsrichter</h3>
+    <div class="officials-field">
+        <label id="officials-label-1">1.</label>
+        <input type="text" id="officials-input-1" placeholder="Name eingeben...">
+    </div>
+    <div class="officials-field">
+        <label id="officials-label-2">2.</label>
+        <input type="text" id="officials-input-2" placeholder="Name eingeben...">
+    </div>
+    <button onclick="saveOfficials()">💾 Speichern</button>
+    <button onclick="closeOfficialsModal()">Abbrechen</button>
 </div>
 
 <script>
@@ -462,6 +486,58 @@
         });
         updateFieldDisplay(currentSide); closeModal('setup'); pushServerToFirebase();
     }
+
+    // === НОВЫЙ БЛОК: СУДЬИ И КОММЕНТАТОРЫ (не пересекается с логикой teamState/roster) ===
+    let currentOfficialsRole = 'referees';
+    const OFFICIALS_LABELS = {
+        referees: { title: 'Schiedsrichter', l1: '1. Schiedsrichter', l2: '2. Schiedsrichter' },
+        commentators: { title: 'Kommentatoren', l1: '1. Kommentator', l2: '2. Kommentator' }
+    };
+    let matchOfficials = { referees: ["", ""], commentators: ["", ""] };
+
+    function openOfficialsModal(role) {
+        currentOfficialsRole = role;
+        const labels = OFFICIALS_LABELS[role];
+        document.getElementById('officials-title').innerText = labels.title;
+        document.getElementById('officials-label-1').innerText = labels.l1;
+        document.getElementById('officials-label-2').innerText = labels.l2;
+        const arr = matchOfficials[role] || ["", ""];
+        document.getElementById('officials-input-1').value = arr[0] || "";
+        document.getElementById('officials-input-2').value = arr[1] || "";
+        document.getElementById('officials-modal').style.display = 'block';
+    }
+
+    function closeOfficialsModal() {
+        document.getElementById('officials-modal').style.display = 'none';
+    }
+
+    async function saveOfficials() {
+        const v1 = document.getElementById('officials-input-1').value.trim();
+        const v2 = document.getElementById('officials-input-2').value.trim();
+        matchOfficials[currentOfficialsRole] = [v1, v2];
+        try {
+            await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/matchOfficials.json", {
+                method: "PUT",
+                body: JSON.stringify(matchOfficials)
+            });
+        } catch (e) { console.error("Ошибка сохранения судей/комментаторов:", e); }
+        closeOfficialsModal();
+    }
+
+    async function loadMatchOfficials() {
+        try {
+            const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/matchOfficials.json");
+            const data = await response.json();
+            if (data) {
+                matchOfficials = {
+                    referees: data.referees || ["", ""],
+                    commentators: data.commentators || ["", ""]
+                };
+            }
+        } catch (e) { console.error("Ошибка загрузки судей/комментаторов:", e); }
+    }
+    loadMatchOfficials();
+    // === КОНЕЦ НОВОГО БЛОКА ===
 
     async function loadStateFromFirebase() {
         try {
