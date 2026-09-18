@@ -245,6 +245,7 @@
   let historyStack = [];
   let isSyncing = false;
   let timeoutTimers = { 1: null, 2: null };
+  let setResetTimer = null; // таймер отложенного обнуления очков после конца партии (НЕ финала матча)
 
   let dbTournamentData = null;
   let dbTeamsDictionary = null;
@@ -557,6 +558,16 @@
 
   function clickPlus(statField, team) { 
     saveHistory(); 
+
+    // Если оператор нажал следующее очко раньше, чем истекла 3-секундная
+    // задержка после конца прошлой партии, — обнуляем очки НЕМЕДЛЕННО,
+    // чтобы новое очко не приплюсовалось к "замороженному" финальному счёту.
+    if (setResetTimer) {
+      clearTimeout(setResetTimer);
+      setResetTimer = null;
+      state.pts1 = 0; state.pts2 = 0; state.timeline = [];
+    }
+
     state[statField]++; 
     team === 1 ? state.pts1++ : state.pts2++ ; 
     state.serve = team; 
@@ -576,11 +587,25 @@
       
       if (state.set1 < 3 && state.set2 < 3) {
         state.currentSet++; 
-        state.pts1 = 0; state.pts2 = 0; state.timeline = []; 
         state.timeoutsLeft1 = 2; state.timeoutsLeft2 = 2;
         state.timeoutActive1 = false; state.timeoutActive2 = false;
+        // pts1/pts2/timeline НЕ обнуляем сразу — даём табло 3 сек
+        // показать финальный счёт только что закончившейся партии.
+        scheduleSetPointsReset();
       }
+      // Если матч завершён (set1===3 или set2===3) — pts1/pts2 остаются
+      // как есть навсегда (замер финального счёта матча), как и раньше.
     } 
+  }
+
+  function scheduleSetPointsReset() {
+    if (setResetTimer) clearTimeout(setResetTimer);
+    setResetTimer = setTimeout(() => {
+      state.pts1 = 0; state.pts2 = 0; state.timeline = [];
+      setResetTimer = null;
+      updateUI();
+      sendToFirebase();
+    }, 3000); // ← задержка в мс перед обнулением очков (3 секунды)
   }
   
   function changeSetScore(t, v) { 
@@ -591,6 +616,10 @@
   }
   
   function undoAction() { 
+    // Обязательно гасим отложенный сброс очков ДО восстановления снапшота:
+    // иначе он сработает через несколько секунд и обнулит pts1/pts2
+    // уже в восстановленном (отменённом) состоянии.
+    if (setResetTimer) { clearTimeout(setResetTimer); setResetTimer = null; }
     if (historyStack.length > 0) { 
       state = JSON.parse(historyStack.pop()); 
       updateUI(); 
@@ -602,6 +631,7 @@
   
   function resetCurrentSet() { 
     if (confirm("Satz zurücksetzen?")) { 
+      if (setResetTimer) { clearTimeout(setResetTimer); setResetTimer = null; }
       saveHistory(); 
       state.ang1 = 0; state.ang2 = 0; state.blk1 = 0; state.blk2 = 0; state.ase1 = 0; state.ase2 = 0; state.fhl1 = 0; state.fhl2 = 0; 
       state.pts1 = 0; state.pts2 = 0; state.timeline = []; state.finalSetPts1 = 0; state.finalSetPts2 = 0;
@@ -614,6 +644,7 @@
   
   function resetAllMatch() { 
     if (confirm("Alles komplett zurücksetzen?")) { 
+      if (setResetTimer) { clearTimeout(setResetTimer); setResetTimer = null; }
       state = { 
         team1Name: state.team1Name, team2Name: state.team2Name, team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "", leagueId: state.leagueId || "",
         ang1: 0, ang2: 0, blk1: 0, blk2: 0, ase1: 0, ase2: 0, fhl1: 0, fhl2: 0, pts1: 0, pts2: 0, set1: 0, set2: 0, currentSet: 1, historyStr: "—", serve: 0, timeline: [], finalSetPts1: 0, finalSetPts2: 0,
