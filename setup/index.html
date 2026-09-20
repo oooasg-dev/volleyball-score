@@ -233,7 +233,7 @@
             libero_gast_role2: awayLiberos[1] ? "Libero" : "-",
 
             liste_heim_num1: homeList[0]?.num || "-", liste_heim_name1: homeList[0]?.name || "-",
-            liste_heim_num2: homeList[1]?.num || "-", liste_heim_name1: homeList[1]?.name || "-",
+            liste_heim_num2: homeList[1]?.num || "-", liste_heim_name2: homeList[1]?.name || "-",
             liste_heim_num3: homeList[2]?.num || "-", liste_heim_name3: homeList[2]?.name || "-",
             liste_heim_num4: homeList[3]?.num || "-", liste_heim_name4: homeList[3]?.name || "-",
             liste_heim_num5: homeList[4]?.num || "-", liste_heim_name5: homeList[4]?.name || "-",
@@ -382,11 +382,20 @@
         if (players[targetBtn]) players[targetBtn].style.border = '4px solid #ffd700';
     }
 
+    // ИСПРАВЛЕНИЕ: во время поворота состава (смена подачи) блокируем фоновую
+    // синхронизацию (isSyncing = true), чтобы 2-секундный опрос full_state.json
+    // не мог "откатить" ещё не разошедшуюся по Firebase запись обратно на
+    // старое состояние. Без этого при совпадении по времени замены игрока и
+    // смены подачи в базу мог тихо уйти игрок "до замены".
     function rotatePlayers(side, dir, newServe) {
+        isSyncing = true;
         saveAufstellungHistory(newServe !== undefined ? newServe : lastServe);
         if (dir === 1) teamState[side].onField.unshift(teamState[side].onField.pop());
         else teamState[side].onField.push(teamState[side].onField.shift());
-        updateFieldDisplay(side); pushServerToFirebase();
+        updateFieldDisplay(side);
+        pushServerToFirebase().finally(() => {
+            setTimeout(() => { isSyncing = false; }, 1200);
+        });
     }
 
     function updateFieldDisplay(side) { 
@@ -406,6 +415,10 @@
         }); 
     }
 
+    // ИСПРАВЛЕНИЕ: та же защита isSyncing при замене игрока — раньше замена
+    // никак не блокировала фоновую синхронизацию, из-за чего опрос раз в 2
+    // секунды мог успеть считать ещё не обновлённое состояние из Firebase и
+    // тихо откатить только что сделанную замену обратно в памяти браузера.
     function initSub(side, btnIndex) { 
         currentSide = side; 
         const map = (side === 'top') ? topMap : bottomMap; 
@@ -416,11 +429,15 @@
         teamState[side].roster.filter(p => !onFieldNums.includes(p.num)).forEach(p => { 
             const d = document.createElement('div'); d.className = 'bench-item'; d.innerText = p.num + ' ' + p.name; 
             d.onclick = () => {
+                isSyncing = true;
                 const subOut = teamState[side].onField[playerIndex];
                 const subIn = { num: p.num, name: p.name, role: subOut.role }; 
                 teamState[side].historySubs[1] = teamState[side].historySubs[0]; teamState[side].historySubs[0] = { in: subIn, out: subOut };
                 teamState[side].onField[playerIndex] = subIn; 
-                updateFieldDisplay(side); closeModal('sub'); pushServerToFirebase(); 
+                updateFieldDisplay(side); closeModal('sub');
+                pushServerToFirebase().finally(() => {
+                    setTimeout(() => { isSyncing = false; }, 1200);
+                });
             }; 
             bench.appendChild(d); 
         }); 
