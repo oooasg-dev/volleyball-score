@@ -35,6 +35,12 @@
         .color-gray { background-color: #6e6e6e; }
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; width: 280px; }
         .bench-item { cursor: pointer; padding: 12px; border-bottom: 1px solid #ddd; font-weight: bold; }
+
+        /* === Быстрый выбор связующего (Zuspieler) в окне "Расстановка" === */
+        .z-select-title { font-size: 12px; font-weight: bold; color: #555; margin: 10px 0 4px; }
+        .z-select-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .z-select-btn { background-color: #cfd8dc; border: 1px solid #90a4ae; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: bold; cursor: pointer; min-width: 34px; }
+        .z-select-btn.active { background-color: #ff9800; color: white; border-color: #e65100; }
     </style>
 </head>
 <body>
@@ -95,7 +101,20 @@
 </div>
 
 <div id="list-modal" class="modal"><h3 id="list-title">Список</h3><textarea id="listInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveList()">Сохранить</button></div>
-<div id="setup-modal" class="modal"><h3 id="setup-title">Расстановка</h3><textarea id="setupInput" style="width:100%; height:100px;"></textarea><br><button onclick="saveSetup()">Применить</button></div>
+<div id="setup-modal" class="modal">
+    <h3 id="setup-title">Расстановка</h3>
+    <textarea id="setupInput" style="width:100%; height:100px;" oninput="refreshZButtonLabels()"></textarea>
+    <div class="z-select-title">Связующий (Zuspieler) — выберите игрока:</div>
+    <div class="z-select-row" id="zSelectRow">
+        <button type="button" class="z-select-btn" onclick="selectZuspielerLine(0)">1</button>
+        <button type="button" class="z-select-btn" onclick="selectZuspielerLine(1)">2</button>
+        <button type="button" class="z-select-btn" onclick="selectZuspielerLine(2)">3</button>
+        <button type="button" class="z-select-btn" onclick="selectZuspielerLine(3)">4</button>
+        <button type="button" class="z-select-btn" onclick="selectZuspielerLine(4)">5</button>
+        <button type="button" class="z-select-btn" onclick="selectZuspielerLine(5)">6</button>
+    </div>
+    <br><button onclick="saveSetup()">Применить</button>
+</div>
 <div id="sub-modal" class="modal"><h3>Замена</h3><div id="bench-list"></div><br><button onclick="closeModal('sub')">Отмена</button></div>
 
 <div id="caster-modal" class="modal">
@@ -469,6 +488,9 @@
             }).join('\n');
         } else if (type === 'setup') {
             document.getElementById('setupInput').value = teamState[side].onField.map(p => p.num ? `${p.num}, ${p.name}${p.role === 'Zuspieler' ? ', Z' : ''}` : '').join('\n');
+            const zIdx = teamState[side].onField.findIndex(p => p.role === 'Zuspieler');
+            refreshZButtonLabels();
+            highlightZButtons(zIdx);
         }
         document.getElementById(type == 'setup' ? 'setup-modal' : 'list-modal').style.display = 'block'; 
     }
@@ -488,6 +510,39 @@
         });
         closeModal('list');
         pushServerToFirebase();
+    }
+
+    // Быстрый выбор связующего (Zuspieler) кнопкой вместо ручного ввода ", Z" в тексте.
+    // Кнопки 1..6 соответствуют строкам textarea сверху вниз — тому же порядку,
+    // в котором игроки перечислены в поле "Расстановка".
+    function selectZuspielerLine(index) {
+        const textarea = document.getElementById('setupInput');
+        let lines = textarea.value.split('\n');
+        while (lines.length < 6) lines.push('');
+        // убираем маркер ", Z" у всех строк — связующий может быть только один
+        lines = lines.map(line => line.replace(/\s*,\s*Z\s*$/i, ''));
+        if (lines[index] && lines[index].trim() !== '') {
+            lines[index] = lines[index].trim() + ', Z';
+        }
+        textarea.value = lines.join('\n');
+        highlightZButtons(index);
+    }
+
+    function highlightZButtons(activeIndex) {
+        document.querySelectorAll('.z-select-btn').forEach((btn, i) => {
+            btn.classList.toggle('active', i === activeIndex);
+        });
+    }
+
+    // Подписываем кнопки номерами игроков (если уже введены), чтобы было видно,
+    // кого именно выбираешь связующим, а не просто позицию по порядку строки.
+    function refreshZButtonLabels() {
+        const lines = document.getElementById('setupInput').value.split('\n');
+        document.querySelectorAll('.z-select-btn').forEach((btn, i) => {
+            const line = (lines[i] || '').trim();
+            const num = line.split(',')[0].trim();
+            btn.textContent = num || (i + 1);
+        });
     }
 
     function saveSetup() {
@@ -579,6 +634,12 @@
         try {
             const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/full_state.json");
             const data = await response.json();
+            // ВАЖНО: проверяем isSyncing ЕЩЁ РАЗ, уже после получения ответа.
+            // Пока этот запрос летел по сети (обычно доли секунды), могла
+            // произойти ротация или замена — тогда ответ, полученный сейчас,
+            // на самом деле УСТАРЕЛ (снят с базы до этого изменения) и не
+            // должен применяться поверх уже более свежего локального состояния.
+            if (isSyncing) return;
             if (data && data.state) {
                 if (data.homeSide !== homeSide) {
                     homeSide = data.homeSide;
