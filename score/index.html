@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Score v4.2.7</title>
+  <title>Score v4.2.8</title>
   
   <link rel="apple-touch-icon" href="https://i.ibb.co/Z6Hcnvf9/image.png">
   <link rel="shortcut icon" href="https://i.ibb.co/Z6Hcnvf9/image.png" type="image/png">
@@ -480,6 +480,7 @@
 
   function getBallStatus() {
     if (state.set1 >= 3 || state.set2 >= 3) return { sb1: false, mb1: false, sb2: false, mb2: false };
+    if (setResetTimer) return { sb1: false, mb1: false, sb2: false, mb2: false }; // ← добавить эту строку
     let target = state.currentSet === 5 ? 15 : 25;
     let status = { sb1: false, mb1: false, sb2: false, mb2: false };
     if (state.pts1 >= target - 1 && state.pts1 > state.pts2) {
@@ -489,7 +490,7 @@
       if (state.set2 === 2) status.mb2 = true; else status.sb2 = true;
     }
     return status;
-  }
+}
 
   function syncFromFirebase() {
     if (isSyncing) return;
