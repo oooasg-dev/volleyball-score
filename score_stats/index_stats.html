@@ -25,6 +25,11 @@ body{font-family:sans-serif;background:#f0f0f0;margin:0;padding:6px;touch-action
 .act button{flex:1;height:44px;border:0;border-radius:6px;background:#546e7a;color:#fff;font-weight:bold;font-size:14px}
 .act button.on{background:#ff9800;color:#000}.act .ok{background:#2e7d32;flex:1.2}.act .ok:disabled{background:#90a4ae}
 .sub{display:flex;gap:5px;margin-top:5px}.sub button{flex:1;padding:7px 0;border:0;border-radius:6px;background:#cfd8dc;font-size:12px}.sub button.on{background:#ff9800}
+.blk{position:relative}
+.toast{position:absolute;left:6px;right:6px;top:6px;z-index:5;background:#2e7d32;color:#fff;border-radius:6px;padding:5px 8px;font-weight:bold;font-size:14px;text-align:center;animation:fade 1.6s forwards}
+@keyframes fade{0%,70%{opacity:1}100%{opacity:0}}
+.p.ok{animation:okp .7s;box-shadow:0 0 0 5px #4caf50,0 0 14px 6px #4caf5099}
+@keyframes okp{0%{transform:scale(1.4)}100%{transform:scale(1)}}
 .log{font-size:12px;color:#37474f;text-align:center;min-height:16px}
 </style></head><body><div class="w">
 <div class="top"><button onclick="swap()">⇅</button>
@@ -36,7 +41,7 @@ body{font-family:sans-serif;background:#f0f0f0;margin:0;padding:6px;touch-action
 const VS="https://volley-stats-14e43-default-rtdb.firebaseio.com";
 const COL={1:"#1976d2",2:"#c62828"};
 let L={lineup:{},bench:{},libero:{},serving:null,names:{},uuid:null};
-let events=[],sel={1:{},2:{}},topTeam=1;
+let flash=null,ft=null;let events=[],sel={1:{},2:{}},topTeam=1;
 const SK={atk:"Angriff",blk:"Block",ace:"Ass",err:"Fehler"},ERR={serve:"Aufschl.",atk:"Angriff",other:"Sonst."};
 
 // ---------- DVV (nur Aufstellung) ----------
@@ -72,6 +77,10 @@ function commit(t){
   const s=replay(events),p=q.pl?playerInfo(q.pl):null;
   events.push({ts:Date.now(),set:s.cur,skill:q.skill,err:q.skill==="err"?(q.err||"other"):null,
     team:t,pt:q.skill==="err"?3-t:t,pl:p?p.uuid:null,num:p?p.num:null,name:p?p.name:null,grade:null});
+  const ev=events[events.length-1];
+  flash={t,pl:ev.pl,txt:`${SK[ev.skill]}${ev.err?" ("+ERR[ev.err]+")":""} · ${ev.num?"#"+ev.num+" "+short(ev.name):"ohne Spieler"}`};
+  clearTimeout(ft);ft=setTimeout(()=>{flash=null;render()},1700);
+  if(navigator.vibrate)navigator.vibrate(60);
   sel[t]={};save();
 }
 function undo(){events.pop();save()}
@@ -111,15 +120,15 @@ function setErr(t,k){sel[t].err=k;render()}
 function pEl(t,p,small){
   if(!p)return'<div class="pw"></div>';
   const q=sel[t],c=small?"":"";
-  return`<div class="pw"><div class="p ${q.pl===p.uuid?"sel":""} ${p.uuid===srvUuid()?"srv":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>${small?"":`<div class="nm">${(p.name||"").split(" ").slice(-1)[0]}</div>`}</div>`;
+  return`<div class="pw"><div class="p ${q.pl===p.uuid?"sel":""} ${p.uuid===srvUuid()?"srv":""} ${flash&&flash.pl===p.uuid&&flash.t===t?"ok":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>${small?"":`<div class="nm">${(p.name||"").split(" ").slice(-1)[0]}</div>`}</div>`;
 }
 function block(t){
-  const f=field(t),g=i=>pEl(t,f[i]),front=`<div class="row">${g(3)}${g(2)}${g(1)}</div>`,back=`<div class="row">${g(4)}${g(5)}${g(0)}</div>`;
-  const q=sel[t],b=benchList(t).map(p=>`<div class="p ${q.pl===p.uuid?"sel":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>`).join("");
+  const f=field(t),g=i=>pEl(t,f[i]),top=t===topTeam,row=a=>`<div class="row">${a.map(g).join("")}</div>`,front=row(top?[1,2,3]:[3,2,1]),back=row(top?[0,5,4]:[4,5,0]);
+  const q=sel[t],b=benchList(t).map(p=>`<div class="p ${q.pl===p.uuid?"sel":""} ${flash&&flash.pl===p.uuid&&flash.t===t?"ok":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>`).join("");
   const acts=["atk","blk","ace","err"].map(k=>`<button class="${q.skill===k?"on":""}" onclick="arm(${t},'${k}')">${SK[k]}</button>`).join("");
   const sub=q.skill==="err"?`<div class="sub">${Object.keys(ERR).map(k=>`<button class="${q.err===k?"on":""}" onclick="setErr(${t},'${k}')">${ERR[k]}</button>`).join("")}</div>`:"";
   const first=t===topTeam;
-  return`<div class="blk"><div class="hd"><span>${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>
+  return`<div class="blk">${flash&&flash.t===t?`<div class="toast">✓ ${flash.txt}</div>`:""}<div class="hd"><span>${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>
   <div class="rows">${first?back+front:front+back}</div><div class="bench">${b||'<span class="nm">Bank leer</span>'}</div>
   <div class="act">${acts}<button class="ok" ${q.skill?"":"disabled"} onclick="commit(${t})">OK</button></div>${sub}</div>`;
 }
