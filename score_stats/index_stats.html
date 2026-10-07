@@ -5,7 +5,14 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <style>
-:root{--c:clamp(44px,6.2vh,64px)}
+:root{
+ --c:60px;      /* кружок игрока на поле */
+ --b:32px;      /* кружок игрока на скамейке */
+ --btn:40px;    /* высота кнопок Angriff/Block/Ass/Fehler/OK */
+ --btn-fs:13px; /* шрифт на кнопках */
+ --nm:13px;     /* фамилия под кружком */
+ --gap:10px;    /* добавочный воздух в поле команды */
+}
 body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f0f0;margin:0;padding:6px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .w{max-width:372px;margin:0 auto}
 .top{background:#2e7d32;color:#fff;border-radius:12px;padding:6px 8px;display:flex;align-items:center;gap:6px;font-weight:bold;height:60px;box-sizing:border-box}
@@ -13,20 +20,20 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f0f0;margin:0
 .top .ss{width:22px;text-align:center;font-size:15px;font-weight:600;opacity:.9}
 .top button{background:#ffffff33;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:19px;padding:0}
 .blk{position:relative;background:#f8fff6;border:2px solid #a8cfa3;border-radius:15px;padding:7px;margin:5px 0}
-.hd{display:flex;justify-content:space-between;align-items:baseline;padding:0 8px 2px;font-weight:800;font-size:22px;line-height:1.15}
+.hd{display:flex;justify-content:space-between;align-items:baseline;padding:0 8px calc(2px + var(--gap));font-weight:800;font-size:22px;line-height:1.15}
 .hd span:last-child{font-size:14px;font-weight:700;color:#000}
-.rows{display:flex;flex-direction:column;gap:5px;background:#b1bdc5;border-radius:10px;padding:6px 4px 7px}
+.rows{display:flex;flex-direction:column;gap:calc(5px + var(--gap));background:#b1bdc5;border-radius:10px;padding:6px 4px calc(7px + var(--gap))}
 .row{display:flex;justify-content:space-around;align-items:flex-start}
 .pw{width:calc(var(--c) + 24px);text-align:center}
 .p{width:var(--c);height:var(--c);border-radius:50%;border:4px solid transparent;box-sizing:border-box;color:#fff;font-weight:bold;font-size:calc(var(--c)*.46);display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}
 .p.srv{border-color:#ffeb3b}
 .p.sel{transform:scale(1.15);box-shadow:0 0 0 3px #fff,0 0 0 6px #263238}
-.nm{margin-top:3px;font-size:calc(var(--c)*.23);line-height:1.15;font-weight:700;color:#1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bench{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;min-height:calc(var(--c)*.72)}
-.bench .p{width:calc(var(--c)*.72);height:calc(var(--c)*.72);font-size:calc(var(--c)*.34);margin:0;opacity:.9}
+.nm{margin-top:3px;font-size:var(--nm);line-height:1.15;font-weight:700;color:#1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bench{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;min-height:var(--b)}
+.bench .p{width:var(--b);height:var(--b);font-size:calc(var(--b)*.47);margin:0;opacity:.9}
 .bench .nm{margin:0}
 .act{display:flex;gap:4px;margin-top:7px}
-.act button{flex:1;min-width:0;padding:0;height:calc(var(--c)*.9);border:0;border-radius:9px;background:#546e7a;color:#fff;font-weight:bold;font-size:calc(var(--c)*.27)}
+.act button{flex:1;min-width:0;padding:0;height:var(--btn);border:0;border-radius:9px;background:#546e7a;color:#fff;font-weight:bold;font-size:var(--btn-fs)}
 .act button.on{background:#ff9800;color:#000}.act .ok{background:#2e7d32;flex:.9}.act .ok:disabled{background:#90a4ae}
 .sub{display:flex;gap:4px;margin-top:6px}.sub button{flex:1;padding:8px 0;border:0;border-radius:8px;background:#cfd8dc;font-size:14px;font-weight:700}.sub button.on{background:#ff9800}
 .net{display:none}
