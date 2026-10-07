@@ -5,41 +5,45 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <style>
-body{font-family:sans-serif;background:#f0f0f0;margin:0;padding:6px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
-.w{max-width:430px;margin:0 auto}
-.top{background:#2e7d32;color:#fff;border-radius:8px;padding:6px 8px;display:flex;align-items:center;gap:6px;font-weight:bold}
-.top .sc{flex:1;text-align:center;font-size:20px}.top small{font-size:11px;font-weight:normal;display:block}
-.top button{background:#fff3;color:#fff;border:0;border-radius:6px;padding:8px 10px;font-size:15px}
-.blk{background:#b1bdc5;border-radius:10px;padding:6px;margin:6px 0}
-.hd{display:flex;justify-content:space-between;font-weight:bold;font-size:13px;margin-bottom:4px}
-.rows{display:flex;flex-direction:column;gap:6px}.row{display:flex;justify-content:space-around}
-.pw{width:62px;text-align:center}
-.p{width:48px;height:48px;border-radius:50%;border:3px solid transparent;color:#fff;font-weight:bold;font-size:21px;display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}
+:root{--c:clamp(44px,6.2vh,64px)}
+body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f0f0;margin:0;padding:6px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.w{max-width:372px;margin:0 auto}
+.top{background:#2e7d32;color:#fff;border-radius:12px;padding:6px 8px;display:flex;align-items:center;gap:6px;font-weight:bold;height:60px;box-sizing:border-box}
+.top .sc{flex:1;text-align:center;font-size:46px;line-height:1;letter-spacing:1px}
+.top .ss{width:22px;text-align:center;font-size:15px;font-weight:600;opacity:.9}
+.top button{background:#ffffff33;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:19px;padding:0}
+.blk{position:relative;background:#f8fff6;border:2px solid #a8cfa3;border-radius:15px;padding:7px;margin:5px 0}
+.hd{display:flex;justify-content:space-between;align-items:baseline;padding:0 8px 2px;font-weight:800;font-size:22px;line-height:1.15}
+.hd span:last-child{font-size:14px;font-weight:700;color:#000}
+.rows{display:flex;flex-direction:column;gap:5px;background:#b1bdc5;border-radius:10px;padding:6px 4px 7px}
+.row{display:flex;justify-content:space-around;align-items:flex-start}
+.pw{width:calc(var(--c) + 24px);text-align:center}
+.p{width:var(--c);height:var(--c);border-radius:50%;border:4px solid transparent;box-sizing:border-box;color:#fff;font-weight:bold;font-size:calc(var(--c)*.46);display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}
 .p.srv{border-color:#ffeb3b}
 .p.sel{transform:scale(1.15);box-shadow:0 0 0 3px #fff,0 0 0 6px #263238}
-.nm{font-size:10px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.net{height:4px;background:#37474f;border-radius:2px;margin:2px 0}
-.bench{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;padding-top:6px;border-top:1px dashed #78909c}
-.bench .p{width:34px;height:34px;font-size:15px;margin:0;opacity:.8}
-.act{display:flex;gap:5px;margin-top:6px}
-.act button{flex:1;height:44px;border:0;border-radius:6px;background:#546e7a;color:#fff;font-weight:bold;font-size:14px}
-.act button.on{background:#ff9800;color:#000}.act .ok{background:#2e7d32;flex:1.2}.act .ok:disabled{background:#90a4ae}
-.sub{display:flex;gap:5px;margin-top:5px}.sub button{flex:1;padding:7px 0;border:0;border-radius:6px;background:#cfd8dc;font-size:12px}.sub button.on{background:#ff9800}
-.blk{position:relative}
-.toast{position:absolute;left:6px;right:6px;top:6px;z-index:5;background:#2e7d32;color:#fff;border-radius:6px;padding:5px 8px;font-weight:bold;font-size:14px;text-align:center;animation:fade 1.6s forwards}
+.nm{margin-top:3px;font-size:calc(var(--c)*.23);line-height:1.15;font-weight:700;color:#1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bench{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;min-height:calc(var(--c)*.72)}
+.bench .p{width:calc(var(--c)*.72);height:calc(var(--c)*.72);font-size:calc(var(--c)*.34);margin:0;opacity:.9}
+.bench .nm{margin:0}
+.act{display:flex;gap:4px;margin-top:7px}
+.act button{flex:1;min-width:0;padding:0;height:calc(var(--c)*.9);border:0;border-radius:9px;background:#546e7a;color:#fff;font-weight:bold;font-size:calc(var(--c)*.27)}
+.act button.on{background:#ff9800;color:#000}.act .ok{background:#2e7d32;flex:.9}.act .ok:disabled{background:#90a4ae}
+.sub{display:flex;gap:4px;margin-top:6px}.sub button{flex:1;padding:8px 0;border:0;border-radius:8px;background:#cfd8dc;font-size:14px;font-weight:700}.sub button.on{background:#ff9800}
+.net{display:none}
+.toast{position:absolute;left:12px;right:12px;top:8px;z-index:5;background:#1b5e20;color:#fff;border-radius:10px;padding:7px 10px;font-weight:bold;font-size:16px;text-align:center;animation:fade 1.6s forwards}
 @keyframes fade{0%,70%{opacity:1}100%{opacity:0}}
 .p.ok{animation:okp .7s;box-shadow:0 0 0 5px #4caf50,0 0 14px 6px #4caf5099}
 @keyframes okp{0%{transform:scale(1.4)}100%{transform:scale(1)}}
-.log{font-size:12px;color:#37474f;text-align:center;min-height:16px}
+.log{font-size:14px;font-weight:600;color:#37474f;text-align:center;min-height:18px;padding-bottom:2px}
 </style></head><body><div class="w">
 <div class="top"><button onclick="swap()">⇅</button>
-<div class="sc"><span id="pts">0:0</span><small id="info"></small></div>
+<div class="ss" id="s1">0</div><div class="sc" id="pts">0:0</div><div class="ss" id="s2">0</div>
 <button onclick="undo()">↩︎</button></div>
 <div id="app"></div><div class="log" id="log"></div>
 </div>
 <script>
 const VS="https://volley-stats-14e43-default-rtdb.firebaseio.com";
-const COL={1:"#1976d2",2:"#c62828"};
+const COL={1:"#1976d2",2:"#c62828"},TXT={1:"#0d47a1",2:"#b71c1c"};
 let L={lineup:{},bench:{},libero:{},serving:null,names:{},uuid:null};
 let flash=null,ft=null;let events=[],sel={1:{},2:{}},topTeam=1;
 const SK={atk:"Angriff",blk:"Block",ace:"Ass",err:"Fehler"},ERR={serve:"Aufschl.",atk:"Angriff",other:"Sonst."};
@@ -131,8 +135,7 @@ function block(t){
   const acts=["atk","blk","ace","err"].map(k=>`<button class="${q.skill===k?"on":""}" onclick="arm(${t},'${k}')">${SK[k]}</button>`).join("");
   const sub=q.skill==="err"?`<div class="sub">${Object.keys(ERR).map(k=>`<button class="${q.err===k?"on":""}" onclick="setErr(${t},'${k}')">${ERR[k]}</button>`).join("")}</div>`:"";
   const first=t===topTeam;
-  return`<div class="blk">${flash&&flash.t===t?`<div class="toast">✓ ${flash.txt}</div>`:""}<div class="hd"><span>${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>
-  <div class="rows">${first?back+front:front+back}</div><div class="bench">${b||'<span class="nm">Bank leer</span>'}</div>
+  return`<div class="blk">${flash&&flash.t===t?`<div class="toast">✓ ${flash.txt}</div>`:""}<div class="rows"><div class="hd"><span style="color:${TXT[t]}">${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>${first?back+front:front+back}</div><div class="bench">${b||'<span class="nm">Bank leer</span>'}</div>
   <div class="act">${acts}<button class="ok" ${q.skill?"":"disabled"} onclick="commit(${t})">OK</button></div>${sub}</div>`;
 }
 function stat(t){const c=replay(events).cur,a=agg(events.filter(e=>e.set===c)).team[t];return`${a.atk+a.blk+a.ace} (A${a.atk} B${a.blk} S${a.ace}) F${a.err}`}
@@ -140,7 +143,7 @@ function render(){
   const s=replay(events),o=topTeam,u=3-o;
   document.getElementById("app").innerHTML=block(o)+'<div class="net"></div>'+block(u);
   document.getElementById("pts").textContent=s.pts[1]+" : "+s.pts[2];
-  document.getElementById("info").textContent="Satz "+s.cur+" · Sätze "+s.sets[1]+":"+s.sets[2]+(s.hist.length?" · "+s.hist.join(" "):"");
+  document.getElementById("s1").textContent=s.sets[1];document.getElementById("s2").textContent=s.sets[2];
   const e=events[events.length-1];
   document.getElementById("log").textContent=e?`${SK[e.skill]}${e.err?" ("+ERR[e.err]+")":""} · ${e.num?"#"+e.num+" "+e.name:"ohne Spieler"}`:"";
 }
@@ -166,12 +169,12 @@ function doVmix(){
   const cur={set:s.cur,pts1:s.pts[1],pts2:s.pts[2]};teamBlock(cur,events.filter(e=>e.set===s.cur));
   const lp=(s.hist[n-1]||":").split(":"),last={set:n,pts1:lp[0],pts2:lp[1]};teamBlock(last,n?events.filter(e=>e.set===n):[]);
   const pl={};
-  for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",pts:0,atk:0,blk:0,ace:0,err:0}});
-  Object.values(agg().pl).forEach(p=>{const q=pl[p.uuid]||(pl[p.uuid]={uuid:p.uuid,team:p.team,teamName:L.names[p.team]||"",num:p.num||"",name:p.name||"",role:(playerInfo(p.uuid)||{}).role||""});
+  for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",photo:p.photo||"",pts:0,atk:0,blk:0,ace:0,err:0}});
+  Object.values(agg().pl).forEach(p=>{const q=pl[p.uuid]||(pl[p.uuid]={uuid:p.uuid,team:p.team,teamName:L.names[p.team]||"",num:p.num||"",name:p.name||"",role:(playerInfo(p.uuid)||{}).role||"",photo:(playerInfo(p.uuid)||{}).photo||""});
     Object.assign(q,{pts:p.pts,atk:p.atk,blk:p.blk,ace:p.ace,err:p.err})});
   const all=Object.values(pl).filter(p=>p.pts>0).sort((a,b)=>b.pts-a.pts||b.atk-a.atk);
   put("stats_cur",[cur]);put("stats_last",[last]);put("stats_players",pl);
-  const F=["uuid","name","num","role","teamName","pts","atk","blk","ace","err"],flat=(o,pre,p)=>{F.forEach(k=>o[pre+k]=p?p[k]:"");o[pre+"short"]=p?short(p.name):"";o[pre+"team"]=p?p.team:""};
+  const F=["uuid","name","num","role","photo","teamName","pts","atk","blk","ace","err"],flat=(o,pre,p)=>{F.forEach(k=>o[pre+k]=p?p[k]:"");o[pre+"short"]=p?short(p.name):"";o[pre+"team"]=p?p.team:""};
   const top5={},byT={all:all,t1:all.filter(p=>p.team===1),t2:all.filter(p=>p.team===2)};
   for(const g in byT)for(let i=0;i<5;i++)flat(top5,`${g}_${i+1}_`,byT[g][i]);
   const duel={};flat(duel,"t1_",byT.t1[0]);flat(duel,"t2_",byT.t2[0]);
