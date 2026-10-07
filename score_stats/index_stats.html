@@ -55,10 +55,15 @@ listen("program/live/live/libero",v=>L.libero=v||{});
 listen("program/live/live/servingPlayer",v=>L.serving=v);
 listen("program/live/meta/team1Name",v=>L.names[1]=v||"Team 1");
 listen("program/live/meta/team2Name",v=>L.names[2]=v||"Team 2");
-db.ref("program/matchUuid").on("value",async s=>{
-  L.uuid=s.val();if(!L.uuid)return;
-  try{const r=await (await fetch(`${VS}/stats_journal/${L.uuid}.json`)).json();events=(r&&r.events)||[];}catch(e){events=[]}
-  render();pushVmix();});
+const vdb=firebase.database(firebase.initializeApp({databaseURL:VS},"vs"));
+let jref=null,keys=[];
+db.ref("program/matchUuid").on("value",s=>{
+  L.uuid=s.val();if(jref){jref.off();jref=null}
+  events=[];keys=[];
+  if(!L.uuid){render();return}
+  jref=vdb.ref(`stats_journal/${L.uuid}/events`);
+  jref.on("value",sn=>{events=[];keys=[];sn.forEach(c=>{events.push(c.val());keys.push(c.key)});render();pushVmix()});
+});
 
 // ---------- Eigene Zählung ----------
 function replay(ev){
@@ -75,19 +80,17 @@ function replay(ev){
 function commit(t){
   const q=sel[t];if(!q.skill)return;
   const s=replay(events),p=q.pl?playerInfo(q.pl):null;
-  events.push({ts:Date.now(),set:s.cur,skill:q.skill,err:q.skill==="err"?(q.err||"other"):null,
-    team:t,pt:q.skill==="err"?3-t:t,pl:p?p.uuid:null,num:p?p.num:null,name:p?p.name:null,grade:null});
-  const ev=events[events.length-1];
+  const ev={ts:Date.now(),set:s.cur,skill:q.skill,err:q.skill==="err"?(q.err||"other"):null,
+    team:t,pt:q.skill==="err"?3-t:t,pl:p?p.uuid:null,num:p?p.num:null,name:p?p.name:null,grade:null};
+  if(jref)jref.push(ev);else events.push(ev);
   flash={t,pl:ev.pl,txt:`${SK[ev.skill]}${ev.err?" ("+ERR[ev.err]+")":""} · ${ev.num?"#"+ev.num+" "+short(ev.name):"ohne Spieler"}`};
   clearTimeout(ft);ft=setTimeout(()=>{flash=null;render()},1700);
   if(navigator.vibrate)navigator.vibrate(60);
   sel[t]={};save();
 }
-function undo(){events.pop();save()}
+function undo(){if(jref&&keys.length)jref.child(keys[keys.length-1]).remove();else events.pop();save()}
 function swap(){topTeam=3-topTeam;render()}
-async function save(){render();pushVmix();
-  if(!L.uuid)return;
-  fetch(`${VS}/stats_journal/${L.uuid}.json`,{method:"PUT",body:JSON.stringify({events,updated:Date.now()})}).catch(()=>{});}
+function save(){render();pushVmix()}
 
 // ---------- Spieler ----------
 function team(t){return"team"+t}
