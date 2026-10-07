@@ -8,17 +8,18 @@
 :root{
  --c:60px;      /* кружок игрока на поле */
  --b:32px;      /* кружок игрока на скамейке */
- --btn:50px;    /* высота кнопок Angriff/Block/Ass/Fehler/OK */
+ --btn:40px;    /* высота кнопок Angriff/Block/Ass/Fehler/OK */
  --btn-fs:13px; /* шрифт на кнопках */
  --nm:13px;     /* фамилия под кружком */
- --gap:7px;    /* добавочный воздух в поле команды */
+ --gap:10px;    /* добавочный воздух в поле команды */
 }
 body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f0f0;margin:0;padding:6px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
 .w{max-width:372px;margin:0 auto}
 .top{background:#2e7d32;color:#fff;border-radius:12px;padding:6px 8px;display:flex;align-items:center;gap:6px;font-weight:bold;height:60px;box-sizing:border-box}
 .top .sc{flex:1;text-align:center;font-size:46px;line-height:1;letter-spacing:1px}
 .top .ss{width:22px;text-align:center;font-size:15px;font-weight:600;opacity:.9}
-.top button{background:#ffffff33;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:19px;padding:0}
+.top button.hold{background:#e53935;transition:background 1.2s linear}
+.top button{-webkit-touch-callout:none;background:#ffffff33;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:19px;padding:0}
 .blk{position:relative;background:#f8fff6;border:2px solid #a8cfa3;border-radius:15px;padding:7px;margin:5px 0}
 .hd{display:flex;justify-content:space-between;align-items:baseline;padding:0 8px calc(2px + var(--gap));font-weight:800;font-size:22px;line-height:1.15}
 .hd span:last-child{font-size:14px;font-weight:700;color:#000}
@@ -45,7 +46,7 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f0f0;margin:0
 </style></head><body><div class="w">
 <div class="top"><button onclick="swap()">⇅</button>
 <div class="ss" id="s1">0</div><div class="sc" id="pts">0:0</div><div class="ss" id="s2">0</div>
-<button onclick="undo()">↩︎</button></div>
+<button id="undo" title="Тап: отмена · удержать: сброс всего">↩︎</button></div>
 <div id="app"></div><div class="log" id="log"></div>
 </div>
 <script>
@@ -100,6 +101,19 @@ function commit(t){
   sel[t]={};save();
 }
 function undo(){if(jref&&keys.length)jref.child(keys[keys.length-1]).remove();else events.pop();save()}
+function resetAll(){
+  if(!confirm("Сбросить всё на 0?\nСтатистика этого матча будет удалена."))return;
+  sel={1:{},2:{}};flash=null;
+  if(jref)jref.remove();else events=[];
+  save();
+}
+(function(){const b=document.getElementById("undo");let t=null,held=false;
+  const stop=()=>{clearTimeout(t);b.classList.remove("hold")};
+  b.addEventListener("pointerdown",()=>{held=false;b.classList.add("hold");t=setTimeout(()=>{held=true;stop();resetAll()},1200)});
+  ["pointerup","pointerleave","pointercancel"].forEach(e=>b.addEventListener(e,stop));
+  b.addEventListener("click",()=>{if(held){held=false;return}undo()});
+  b.addEventListener("contextmenu",e=>e.preventDefault());
+})();
 function swap(){topTeam=3-topTeam;render()}
 function save(){render();pushVmix()}
 
