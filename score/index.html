@@ -1,3 +1,6 @@
+
+index.html
+100 %
 <!DOCTYPE html>
 <html>
 <head>
@@ -233,6 +236,8 @@
   const FIREBASE_BASE_URL = "https://volley-stats-14e43-default-rtdb.firebaseio.com";
   const FIREBASE_URL = `${FIREBASE_BASE_URL}/match.json`;
   const VMIX_URL = `${FIREBASE_BASE_URL}/vmix.json`;
+  // Базовая папка с логотипами на компьютере vMix (с обратным слэшем на конце)
+  const LOGO_BASE_PATH = "G:\\Мой диск\\STREAMING_PROJECTS\\001_Baden_Season_26-27\\03_Title\\";
 
   let state = { 
     team1Name: "Team A", team2Name: "Team B", team1Logo: "", team2Logo: "", leagueId: "", 
@@ -520,11 +525,14 @@
     else if (ballStatus.sb1) activeBall = "Satzball1";
     else if (ballStatus.sb2) activeBall = "Satzball2";
 
-    let lFull = ""; let lShort = ""; let lMicro = "";
+    let lFull = ""; let lShort = ""; let lMicro = ""; let lLogo = "";
     if (state.leagueId && dbLeaguesDictionary && dbLeaguesDictionary[state.leagueId]) {
       lFull = dbLeaguesDictionary[state.leagueId].fullName || "";
       lShort = dbLeaguesDictionary[state.leagueId].shortName || "";
       lMicro = dbLeaguesDictionary[state.leagueId].microName || "";
+      let rawLogo = dbLeaguesDictionary[state.leagueId].leagueLogo || "";
+      // Полный путь для GT Zip в vMix: базовая папка + относительный путь с обратными слэшами
+      lLogo = rawLogo ? LOGO_BASE_PATH + rawLogo.replace(/\//g, "\\") : "";
     } else if (state.leagueId) {
       lShort = state.leagueId.toUpperCase().replace(/_/g, ' ');
     }
@@ -535,7 +543,7 @@
       ase1: state.ase1, ase2: state.ase2, fhl1: state.fhl1, fhl2: state.fhl2, 
       team1Name: state.team1Name, team2Name: state.team2Name, 
       team1Logo: state.team1Logo || "", team2Logo: state.team2Logo || "",
-      league_full: lFull, league_short: lShort, league_micro: lMicro, league: lShort, 
+      league_full: lFull, league_short: lShort, league_micro: lMicro, league: lShort, league_logo: lLogo,
       auszeit_active1: state.timeoutActive1 ? "1" : "0",
       auszeit_active2: state.timeoutActive2 ? "1" : "0",
       auszeit_left1: state.timeoutsLeft1 !== undefined ? state.timeoutsLeft1 : 2,
