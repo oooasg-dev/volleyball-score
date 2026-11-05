@@ -136,15 +136,15 @@ function arm(t,k){sel[3-t]={};let q=sel[t];
   if(q.skill===k){sel[t]={};render();return}
   if(q.auto&&k!=="ace"){q.pl=null;q.auto=false}
   q.skill=k;
-  if(k==="err")q.err=q.err||"other";
+  if(k==="err"){q.err="other";q.errSet=false}   // по умолчанию «Sonst.», errSet = тип выбран нажатием
   if(k==="ace"&&!q.pl&&srvTeam()===t){q.pl=srvUuid();q.auto=true}
   if(k!=="err"&&q.pl&&!q.auto)return commit(t);
   render()}
 function pick(t,u){sel[3-t]={};const q=sel[t],same=q.pl===u&&!q.auto;
   q.pl=same?null:u;q.auto=false;
-  if(q.pl&&q.skill&&q.skill!=="err")return commit(t);
+  if(q.pl&&q.skill&&(q.skill!=="err"||q.errSet))return commit(t);   // ошибка: сохраняем сразу, если тип уже выбран нажатием
   render()}
-function setErr(t,k){sel[t].err=k;render()}
+function setErr(t,k){const q=sel[t];q.err=k;q.errSet=true;if(q.pl)return commit(t);render()}   // игрок уже выбран — сохраняем сразу
 function pEl(t,p,small){
   if(!p)return'<div class="pw"></div>';
   const q=sel[t],c=small?"":"";
@@ -172,11 +172,13 @@ function render(){
 // ---------- Statistik -> vMix ----------
 function agg(evs){
   evs=evs||events;
-  const team={1:{atk:0,blk:0,ace:0,err:0},2:{atk:0,blk:0,ace:0,err:0}},bySet={},pl={};
+  const z=()=>({atk:0,blk:0,ace:0,err:0,errs:0});   // errs = Fehler beim Aufschlag (Teilmenge von err)
+  const team={1:z(),2:z()},bySet={},pl={};
   for(const e of evs){
-    team[e.team][e.skill]++;
-    const b=bySet[e.set]=bySet[e.set]||{1:{atk:0,blk:0,ace:0,err:0},2:{atk:0,blk:0,ace:0,err:0}};b[e.team][e.skill]++;
-    if(e.pl){const p=pl[e.pl]=pl[e.pl]||{uuid:e.pl,team:e.team,num:e.num,name:e.name,atk:0,blk:0,ace:0,err:0};p[e.skill]++;}
+    const se=e.skill==="err"&&e.err==="serve";
+    team[e.team][e.skill]++;if(se)team[e.team].errs++;
+    const b=bySet[e.set]=bySet[e.set]||{1:z(),2:z()};b[e.team][e.skill]++;if(se)b[e.team].errs++;
+    if(e.pl){const p=pl[e.pl]=pl[e.pl]||{uuid:e.pl,team:e.team,num:e.num,name:e.name,atk:0,blk:0,ace:0,err:0,errs:0};p[e.skill]++;if(se)p.errs++;}
   }
   Object.values(pl).forEach(p=>p.pts=p.atk+p.blk+p.ace);
   return{team,bySet,pl};
@@ -184,18 +186,22 @@ function agg(evs){
 const short=n=>{if(!n)return"";const a=n.split(" ");return a.length>1?a[0][0]+". "+a.slice(1).join(" "):n};
 let vt=null;function pushVmix(){clearTimeout(vt);vt=setTimeout(doVmix,300)}
 function put(path,val){return fetch(`${VS}/${path}.json`,{method:"PUT",body:JSON.stringify(val)}).catch(()=>{})}
-function teamBlock(o,evs){const B=agg(evs);for(const t of[1,2]){const T=B.team[t];o[`t${t}_pts`]=T.atk+T.blk+T.ace;["atk","blk","ace","err"].forEach(k=>o[`t${t}_${k}`]=T[k])}}
+function teamBlock(o,evs){const B=agg(evs);for(const t of[1,2]){const T=B.team[t];o[`t${t}_pts`]=T.atk+T.blk+T.ace;["atk","blk","ace","err","errs"].forEach(k=>o[`t${t}_${k}`]=T[k])}}
 function doVmix(){
   const s=replay(events),n=s.hist.length;
-  const cur={set:s.cur,pts1:s.pts[1],pts2:s.pts[2]};teamBlock(cur,events.filter(e=>e.set===s.cur));
+  const cur={set:s.cur,pts1:s.pts[1],pts2:s.pts[2],sets1:s.sets[1],sets2:s.sets[2]};teamBlock(cur,events.filter(e=>e.set===s.cur));
   const lp=(s.hist[n-1]||":").split(":"),last={set:n,pts1:lp[0],pts2:lp[1]};teamBlock(last,n?events.filter(e=>e.set===n):[]);
   const pl={};
-  for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",photo:p.photo||"",pts:0,atk:0,blk:0,ace:0,err:0}});
+  for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",photo:p.photo||"",pts:0,atk:0,blk:0,ace:0,err:0,errs:0}});
   Object.values(agg().pl).forEach(p=>{const q=pl[p.uuid]||(pl[p.uuid]={uuid:p.uuid,team:p.team,teamName:L.names[p.team]||"",num:p.num||"",name:p.name||"",role:(playerInfo(p.uuid)||{}).role||"",photo:(playerInfo(p.uuid)||{}).photo||""});
-    Object.assign(q,{pts:p.pts,atk:p.atk,blk:p.blk,ace:p.ace,err:p.err})});
+    Object.assign(q,{pts:p.pts,atk:p.atk,blk:p.blk,ace:p.ace,err:p.err,errs:p.errs})});
   const all=Object.values(pl).filter(p=>p.pts>0).sort((a,b)=>b.pts-a.pts||b.atk-a.atk);
   put("stats_cur",[cur]);put("stats_last",[last]);put("stats_players",pl);
-  const F=["uuid","name","num","role","photo","teamName","pts","atk","blk","ace","err"],flat=(o,pre,p)=>{F.forEach(k=>o[pre+k]=p?p[k]:"");o[pre+"short"]=p?short(p.name):"";o[pre+"team"]=p?p.team:""};
+  // подающий и серия очков подряд в текущем сэте (для страницы комментаторов)
+  const cs=events.filter(e=>e.set===s.cur);let run=0,rt=0;
+  if(cs.length){rt=cs[cs.length-1].pt;for(let i=cs.length-1;i>=0&&cs[i].pt===rt;i--)run++}
+  put("stats_serving",[{uuid:srvUuid()||"",team:srvTeam()||0,run:run,runTeam:rt}]);
+  const F=["uuid","name","num","role","photo","teamName","pts","atk","blk","ace","err","errs"],flat=(o,pre,p)=>{F.forEach(k=>o[pre+k]=p?p[k]:"");o[pre+"short"]=p?short(p.name):"";o[pre+"team"]=p?p.team:""};
   const top5={},byT={all:all,t1:all.filter(p=>p.team===1),t2:all.filter(p=>p.team===2)};
   for(const g in byT)for(let i=0;i<5;i++)flat(top5,`${g}_${i+1}_`,byT[g][i]);
   const duel={};flat(duel,"t1_",byT.t1[0]);flat(duel,"t2_",byT.t2[0]);
