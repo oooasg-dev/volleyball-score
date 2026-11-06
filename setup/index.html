@@ -30,10 +30,12 @@
         .row { display: flex; justify-content: space-around; align-items: flex-start; }
         .player-wrap { display: flex; flex-direction: column; align-items: center; width: 58px; }
         .player { width: 48px; height: 48px; border-radius: 50%; border: none; cursor: pointer; color: white; font-weight: bold; font-size: 22px; display: flex; justify-content: center; align-items: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .player-name { margin-top: 3px; font-size: 10px; line-height: 1.15; font-weight: 600; color: #333; text-align: center; max-width: 58px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+        .player-name { margin-top: 3px; font-size: 10px; line-height: 1.15; font-weight: 600; color: #333; text-align: center; max-width: 92px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+        @keyframes subBlink { 0%, 100% { filter: none; } 50% { background-color: #e53935; filter: brightness(1.15); } }
+        .player.sub-blink { animation: subBlink 0.8s ease-in-out infinite; }
         .color-blue { background-color: #008cc9; }
         .color-gray { background-color: #6e6e6e; }
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; width: 280px; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.3); z-index: 1000; width: 280px; max-height: 85vh; overflow-y: auto; box-sizing: border-box; overscroll-behavior: contain; }
         .bench-item { cursor: pointer; padding: 12px; border-bottom: 1px solid #ddd; font-weight: bold; }
 
         /* === Быстрый выбор связующего (Zuspieler) в окне "Расстановка" === */
@@ -42,6 +44,8 @@
         .z-select-btn { background-color: #cfd8dc; border: 1px solid #90a4ae; border-radius: 8px; padding: 8px 10px; font-size: 14px; font-weight: bold; cursor: pointer; min-width: 34px; }
         .z-select-btn.active { background-color: #ff9800; color: white; border-color: #e65100; }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="viewport">
@@ -73,6 +77,7 @@
             <button class="officials-round-btn" onclick="openOfficialsModal('referees')" title="Schiedsrichter">⚖️</button>
             <button class="swap-btn" onclick="swapSides()">⇄</button>
             <button class="officials-round-btn" onclick="openOfficialsModal('commentators')" title="Kommentatoren">🎙️</button>
+            <button class="officials-round-btn" id="mode-btn" onclick="toggleMode()" title="Мануал / Автомат">M</button>
         </div>
 
         <div class="side" id="bottom-side">
@@ -293,6 +298,7 @@
     }
 
     async function syncServeStatus() {
+        if (autoMode) return;
         try {
             const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/match.json");
             const data = await response.json();
@@ -373,7 +379,7 @@
     function renderCasterButtons() {
         const view = document.getElementById('caster-list-view'); 
         view.innerHTML = '';
-        (teamState[currentSide].staff || []).forEach(person => {
+        (autoMode ? [...(teamState[currentSide].roster || []), ...(teamState[currentSide].staff || [])] : (teamState[currentSide].staff || [])).forEach(person => {
             const d = document.createElement('div'); 
             d.className = 'bench-item'; 
             d.innerText = `${person.num ? person.num + ' ' : ''}${person.name}${person.role ? ' (' + person.role + ')' : ''}`;
@@ -427,7 +433,10 @@
             btn.title = p.name + (p.role ? " (" + p.role + ")" : ""); 
             if (names[i]) {
                 const nameParts = (p.name || '').trim().split(/\s+/);
-                names[i].innerText = nameParts.length ? nameParts[nameParts.length - 1] : '';
+                const ABBR = { Zuspieler: 'Z', Aussenangriff: 'AA', Mittelblock: 'MB', Diagonal: 'D', Libero: 'L' };
+                const last = nameParts.length ? nameParts[nameParts.length - 1] : '';
+                const ab = ABBR[p.role] || '';
+                names[i].innerText = (last && ab) ? last + ' | ' + ab : last;
             }
             btn.style.outline = (p.role === "Zuspieler") ? "2px solid white" : "none"; 
             btn.style.outlineOffset = "-2px"; 
@@ -473,6 +482,7 @@
         updateFieldDisplay('top'); updateFieldDisplay('bottom'); 
         pushServerToFirebase(); 
         setTimeout(() => { isSyncing = false; }, 1000);
+        if (autoMode) scheduleAuto();
     }
 
     function editTeamName(side) { const newName = prompt("Название:", teamState[side].name); if (newName) { teamState[side].name = newName; document.getElementById(side + '-name').innerText = newName; pushServerToFirebase(); } }
@@ -510,6 +520,7 @@
         });
         closeModal('list');
         pushServerToFirebase();
+        if (autoMode) setManualLibero(teamCodeOf(currentSide), teamState[currentSide].roster.filter(p => p.role === 'Libero').map(p => p.num));
     }
 
     // Быстрый выбор связующего (Zuspieler) кнопкой вместо ручного ввода ", Z" в тексте.
@@ -556,6 +567,7 @@
             const finalName = fromRoster ? fromRoster.name : (fromField ? fromField.name : "");
             teamState[currentSide].onField[i] = { num: data.num, name: finalName, role: zIndex !== -1 ? roleOrder[(i - zIndex + 6) % 6] : "" };
         });
+        if (autoMode && zIndex !== -1) manualZ[teamCodeOf(currentSide)] = inputData[zIndex].num;
         updateFieldDisplay(currentSide); closeModal('setup'); pushServerToFirebase();
     }
 
@@ -609,6 +621,263 @@
         } catch (e) { console.error("Ошибка загрузки судей/комментаторов:", e); }
     }
     loadMatchOfficials();
+
+    // =====================================================================
+    // АВТО-РЕЖИМ: данные берутся из program/live (слушатель DVV) через
+    // слушатели Firebase (как в титрах) — обновление приходит сразу.
+    // В ручном режиме слушатели отключены и ничего из этого блока не работает.
+    // heim = team1 (как в титрах), teamState[homeSide] = team1.
+    // =====================================================================
+    const MODE_KEY = 'aufstellungMode';
+    let autoMode = false;
+    let samsDb = null;
+    let autoRefs = [];            // [{ref, cb}] — чтобы отключать слушатели
+    let autoTimer = null;
+    let lastRefereesSig = '';
+    let lastServing = '';
+    // штаб заменяем данными DVV один раз на матч и команду; отметка живёт в браузере,
+    // чтобы после перезагрузки ручные дописки не стирались
+    const STAFF_KEY = 'aufstellungStaffDone';
+    let staffDone = new Set();
+    try { staffDone = new Set(JSON.parse(localStorage.getItem(STAFF_KEY) || '[]')); } catch (e) {}
+    const manualZ = { team1: '', team2: '' };
+    // кэш последних данных из program/live
+    const pl = { subsLoaded: false, matchUuid: '', lineup: null, serving: null, roster: null, meta: {}, referees: null, subs: null };
+
+    // Ручная правка либеро (окно 📋, пометка L1/L2): сильнее заявки DVV, пока не снята
+    // (убрать все пометки L в списке — вернуться к DVV). Действует в рамках матча.
+    const LIB_KEY = 'aufstellungManualLibero';
+    let manualLibero = { mu: '', team1: [], team2: [] };
+    try { manualLibero = Object.assign(manualLibero, JSON.parse(localStorage.getItem(LIB_KEY) || '{}')); } catch (e) {}
+    function setManualLibero(code, nums) {
+        manualLibero[code] = nums;
+        manualLibero.mu = pl.matchUuid || manualLibero.mu;
+        try { localStorage.setItem(LIB_KEY, JSON.stringify(manualLibero)); } catch (e) {}
+        scheduleAuto();
+    }
+
+    function teamCodeOf(side) { return side === homeSide ? 'team1' : 'team2'; }
+    function sideOf(code) { return code === 'team1' ? homeSide : (homeSide === 'top' ? 'bottom' : 'top'); }
+
+    function updateModeButton() {
+        const b = document.getElementById('mode-btn');
+        b.innerText = autoMode ? 'A' : 'M';
+        b.style.backgroundColor = autoMode ? '#2e7d32' : '#5c6bc0';
+        b.title = autoMode ? 'Автомат (program/live)' : 'Мануал';
+    }
+
+    function getSamsDb() {
+        if (samsDb) return samsDb;
+        if (typeof firebase === 'undefined') return null;
+        const app = firebase.initializeApp({ databaseURL: "https://sams-score-3liga-default-rtdb.europe-west1.firebasedatabase.app" }, 'sams');
+        samsDb = firebase.database(app);
+        return samsDb;
+    }
+
+    function listen(path, onVal) {
+        const ref = samsDb.ref(path);
+        const cb = snap => { onVal(snap.val()); scheduleAuto(); };
+        ref.on('value', cb);
+        autoRefs.push({ ref, cb });
+    }
+
+    function startAuto() {
+        if (!getSamsDb()) { console.error('Firebase SDK не загружен — авто-режим недоступен'); alert('Firebase SDK не загрузился (нет интернета?). Остаюсь в ручном режиме.'); return false; }
+        stopAuto();
+        pl.subsLoaded = false; subsSeen = null; activeSubs = [];
+        listen('program/matchUuid',            v => { pl.matchUuid = v || ''; });
+        listen('program/live/live/lineup',     v => { pl.lineup = v; });
+        listen('program/live/live/servingTeam',v => { pl.serving = v; });
+        listen('program/live/roster',          v => { pl.roster = v; });
+        listen('program/live/referees',        v => { pl.referees = v; });
+        listen('program/live/substitutions',   v => { pl.subs = v; pl.subsLoaded = true; });
+        // весь meta меняется на каждый розыгрыш (syncedAt) — слушаем только названия
+        listen('program/live/meta/team1Name',  v => { pl.meta.team1Name = v; });
+        listen('program/live/meta/team2Name',  v => { pl.meta.team2Name = v; });
+        listen('program/live/meta/team1Id',    v => { pl.meta.team1Id = v; });
+        listen('program/live/meta/team2Id',    v => { pl.meta.team2Id = v; });
+        return true;
+    }
+
+    function stopAuto() {
+        autoRefs.forEach(x => x.ref.off('value', x.cb));
+        autoRefs = [];
+        if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    }
+
+    // --- сигнал замены: кружок вышедшего игрока мигает красным SUB_SIGNAL_MS ---
+    // Время считается по часам, а не таймером анимации — вкладка в фоне ничего не «съедает».
+    const SUB_SIGNAL_MS = 30000;
+    let subsSeen = null;          // уже известные замены (null = ещё не загружены, ничего не мигаем)
+    let activeSubs = [];          // {code, inNum, until}
+    function subKey(x) { return [x.teamCode, x.timestamp, x.playerInUuid || (x.playerIn && x.playerIn.num)].join('|'); }
+
+    function detectSubs() {
+        if (!pl.subsLoaded) return;
+        const list = pl.subs ? (Array.isArray(pl.subs) ? pl.subs : Object.values(pl.subs)) : [];
+        const keys = list.filter(Boolean).map(x => [subKey(x), x]);
+        if (subsSeen === null) { subsSeen = new Set(keys.map(k => k[0])); return; } // первая загрузка — не мигаем
+        keys.forEach(([k, x]) => {
+            if (subsSeen.has(k)) return;
+            subsSeen.add(k);
+            if (x.playerIn && x.playerIn.num !== undefined) activeSubs.push({ code: x.teamCode, inNum: String(x.playerIn.num), until: Date.now() + SUB_SIGNAL_MS });
+        });
+    }
+
+    function refreshSubSignals() {
+        const now = Date.now();
+        activeSubs = activeSubs.filter(a => a.until > now);
+        // позиции меняются при ротации — пересчитываем каждый раз
+        ['top', 'bottom'].forEach(side => {
+            const map = (side === 'top') ? topMap : bottomMap;
+            const code = teamCodeOf(side);
+            const nums = new Set(activeSubs.filter(a => a.code === code).map(a => a.inNum));
+            document.getElementById(side + '-side').querySelectorAll('.player').forEach((btn, idx) => {
+                const p_ = (teamState[side].onField || [])[map[idx]] || {};
+                btn.classList.toggle('sub-blink', nums.has(String(p_.num)));
+            });
+        });
+    }
+    setInterval(refreshSubSignals, 1000);
+    document.addEventListener('visibilitychange', refreshSubSignals);
+
+    function toggleMode() {
+        if (!autoMode) {
+            if (!startAuto()) return;
+            autoMode = true;
+        } else {
+            autoMode = false;
+            stopAuto();
+        }
+        try { localStorage.setItem(MODE_KEY, autoMode ? 'auto' : 'manual'); } catch (e) {}
+        lastServing = '';
+        updateModeButton();
+    }
+
+    const FUNCTION_LABELS = { TRAINER: 'Trainer', TRAINER_ASSISTANT: 'Co-Trainer', TRAINER_ASSISTANT_SCOUT: 'Scout' };
+    // неизвестная функция из DVV: TRAINER_ASSISTANT_X -> "Trainer Assistant X"
+    const funcLabel = f => FUNCTION_LABELS[f] || String(f || '').toLowerCase().split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+    // Либеро матча — только те, кто в squad.liberos. Игрок с позицией Libero в профиле,
+    // но не назначенный либеро на матч, обычный игрок. Если liberos пуст — запасное правило по роли.
+    function isDesignatedLibero(p, code) {
+        if ((manualLibero[code] || []).length) return manualLibero[code].includes(String(p.num));
+        const r = pl.roster && pl.roster[code];
+        const libs = (r && r.liberos) || [];
+        if (libs.length) return libs.some(l => l.uuid === p.uuid);
+        return p.role === 'Libero';
+    }
+
+    function roleFromLineup(lineup, code) {
+        const zs = lineup.map((p, i) => (p.role === 'Zuspieler' && !isDesignatedLibero(p, code) ? i : -1)).filter(i => i >= 0);
+        let zIdx = zs.length === 1 ? zs[0] : -1;
+        if (zIdx === -1 && manualZ[code]) zIdx = lineup.findIndex(p => p.num === manualZ[code]);
+        return lineup.map((p, i) => {
+            if (isDesignatedLibero(p, code)) return 'Libero';
+            return zIdx === -1 ? '' : roleOrder[(i - zIdx + 6) % 6];
+        });
+    }
+
+    function applyLineup(code) {
+        const lineup = (pl.lineup && pl.lineup[code]) || [];
+        if (lineup.length !== 6) return;
+        const roles = roleFromLineup(lineup, code);
+        teamState[sideOf(code)].onField = lineup.map((p, i) => ({ num: String(p.num || ''), name: p.name || '', role: roles[i] }));
+    }
+
+    function applyRoster(code) {
+        const r = pl.roster && pl.roster[code];
+        if (!r) return;
+        const side = sideOf(code);
+        const seen = new Set();
+        const list = [];
+        [...(r.players || []), ...(r.liberos || [])].forEach(p => {
+            if (seen.has(p.uuid)) return;
+            seen.add(p.uuid);
+            const isLib = isDesignatedLibero(p, code);
+            // не назначенный либеро с позицией Libero в профиле — обычный игрок, роль не пишем
+            const role = isLib ? 'Libero' : (p.role === 'Libero' ? '' : (p.role || ''));
+            list.push({ num: String(p.num || ''), name: p.name || '', role });
+        });
+        list.sort((a, b) => Number(a.num || 999) - Number(b.num || 999));
+        teamState[side].roster = list;
+        const nm = pl.meta[code + 'Name'];
+        if (nm) {
+            teamState[side].name = nm;
+            document.getElementById(side + '-name').innerText = nm;
+        }
+        // штаб из DVV: при смене матча старый ручной ввод убираем (один раз), дальше
+        // тренеры DVV синхронизируются постоянно — заявка может прийти позже игроков.
+        // Записи, которые ты допишешь руками, не трогаются.
+        const staff = teamState[side].staff || (teamState[side].staff = []);
+        const staffKey = (pl.meta.team1Id || '') + (pl.meta.team2Id || '') + code;
+        if ((pl.meta.team1Id || pl.meta.team2Id) && !staffDone.has(staffKey)) {
+            staffDone.add(staffKey);
+            try { localStorage.setItem(STAFF_KEY, JSON.stringify([...staffDone].slice(-20))); } catch (e) {}
+            staff.length = 0;
+        }
+        const offs = (r.officials || []).map(o => ({ num: '', name: o.name, role: funcLabel(o.function), auto: true }));
+        const offNames = new Set(offs.map(o => o.name));
+        for (let i = staff.length - 1; i >= 0; i--) if (staff[i].auto && !offNames.has(staff[i].name)) staff.splice(i, 1);
+        offs.forEach(o => { if (!staff.some(x => x.name === o.name)) staff.push(o); });
+        console.log('[auto] штаб DVV', code, ':', offs.length, '| в списке:', staff.length);
+        // замены для старых титров (последние две)
+        const subsRaw = pl.subs ? (Array.isArray(pl.subs) ? pl.subs : Object.values(pl.subs)) : [];
+        const mine = subsRaw.filter(x => x && x.teamCode === code).slice(-2).reverse();
+        const empty = { num: '', name: '', role: '' };
+        const mk = p => p ? { num: String(p.num || ''), name: p.name || '', role: p.role || '' } : empty;
+        teamState[side].historySubs = [0, 1].map(i => mine[i] ? { in: mk(mine[i].playerIn), out: mk(mine[i].playerOut) } : { in: empty, out: empty });
+    }
+
+    async function applyReferees() {
+        const refs = pl.referees;
+        if (!refs) return;
+        const arr = [refs.referee1 || '', refs.referee2 || ''];
+        const sig = arr.join('|');
+        if (sig === lastRefereesSig || sig === '|') return;
+        lastRefereesSig = sig;
+        matchOfficials.referees = arr;
+        try {
+            await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/matchOfficials.json", { method: "PUT", body: JSON.stringify(matchOfficials) });
+        } catch (e) { console.error("Судьи:", e); }
+    }
+
+    // Несколько слушателей срабатывают подряд (при включении и при ротации) —
+    // собираем всё в одно применение.
+    function scheduleAuto() {
+        if (!autoMode && !autoRefs.length) return;
+        if (autoTimer) return;
+        autoTimer = setTimeout(() => { autoTimer = null; applyAuto(); }, 60);
+    }
+
+    async function applyAuto() {
+        if (!autoMode) return;
+        isSyncing = true;
+        try {
+            if (pl.matchUuid && manualLibero.mu && manualLibero.mu !== pl.matchUuid) {
+                manualLibero = { mu: '', team1: [], team2: [] };
+                try { localStorage.removeItem(LIB_KEY); } catch (e) {}
+            }
+            ['team1', 'team2'].forEach(code => { applyRoster(code); applyLineup(code); });
+            updateFieldDisplay('top'); updateFieldDisplay('bottom');
+            detectSubs(); refreshSubSignals();
+            if (pl.serving) updateHighlight(pl.serving === 'team1' ? 1 : 2);
+            lastServing = pl.serving || '';
+            await applyReferees();
+            await pushServerToFirebase();
+        } catch (e) {
+            console.error("Авто-режим:", e);
+        } finally {
+            setTimeout(() => { isSyncing = false; }, 300);
+        }
+    }
+
+    // восстановление режима после перезагрузки страницы
+    try {
+        if (localStorage.getItem(MODE_KEY) === 'auto' && startAuto()) autoMode = true;
+    } catch (e) {}
+    updateModeButton();
+
     // === КОНЕЦ НОВОГО БЛОКА ===
 
     async function loadStateFromFirebase() {
@@ -630,7 +899,7 @@
     loadStateFromFirebase();
 
     setInterval(async () => {
-        if (isSyncing) return; 
+        if (autoMode || isSyncing) return; 
         try {
             const response = await fetch("https://volley-stats-14e43-default-rtdb.firebaseio.com/full_state.json");
             const data = await response.json();
