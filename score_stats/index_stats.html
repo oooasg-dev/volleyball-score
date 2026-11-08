@@ -128,6 +128,15 @@ function benchList(t){
 }
 function playerInfo(u){for(const t of[1,2])for(const p of field(t).concat(benchList(t)))if(p&&p.uuid===u)return p;return null}
 function teamOf(u){for(const t of[1,2])for(const p of field(t).concat(benchList(t)))if(p&&p.uuid===u)return t;return 0}
+// ---------- Роль на поле (логика как в Aufstellung): по ротации от связующего ----------
+const roleOrder=["Zuspieler","Aussenangriff","Mittelblock","Diagonal","Aussenangriff","Mittelblock"];
+const ABBR={Zuspieler:"Z",Aussenangriff:"AA",Mittelblock:"MB",Diagonal:"D",Libero:"L"};
+function isLib(p,t){const r=L.roster&&L.roster[team(t)],libs=(r&&r.liberos)||[];return libs.length?libs.some(l=>l.uuid===p.uuid):p.role==="Libero"}
+function fieldRoles(t){
+  const f=field(t);if(f.length!==6||f.some(p=>!p))return f.map(p=>p?(isLib(p,t)?"Libero":p.role||""):"");
+  const zs=f.map((p,i)=>p.role==="Zuspieler"&&!isLib(p,t)?i:-1).filter(i=>i>=0),z=zs.length===1?zs[0]:-1;
+  return f.map((p,i)=>isLib(p,t)?"Libero":z===-1?(p.role==="Libero"?"":p.role||""):roleOrder[(i-z+6)%6]);
+}
 const srvUuid=()=>L.serving&&L.serving.uuid;
 function srvTeam(){return teamOf(srvUuid())}
 
@@ -145,13 +154,13 @@ function pick(t,u){sel[3-t]={};const q=sel[t],same=q.pl===u&&!q.auto;
   if(q.pl&&q.skill&&(q.skill!=="err"||q.errSet))return commit(t);   // ошибка: сохраняем сразу, если тип уже выбран нажатием
   render()}
 function setErr(t,k){const q=sel[t];q.err=k;q.errSet=true;if(q.pl)return commit(t);render()}   // игрок уже выбран — сохраняем сразу
-function pEl(t,p,small){
+function pEl(t,p,small,role){
   if(!p)return'<div class="pw"></div>';
   const q=sel[t],c=small?"":"";
-  return`<div class="pw"><div class="p ${q.pl===p.uuid?"sel":""} ${p.uuid===srvUuid()?"srv":""} ${flash&&flash.pl===p.uuid&&flash.t===t?"ok":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>${small?"":`<div class="nm">${(p.name||"").split(" ").slice(-1)[0]}</div>`}</div>`;
+  return`<div class="pw"><div class="p ${q.pl===p.uuid?"sel":""} ${p.uuid===srvUuid()?"srv":""} ${flash&&flash.pl===p.uuid&&flash.t===t?"ok":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>${small?"":`<div class="nm">${(p.name||"").split(" ").slice(-1)[0]}${ABBR[role]?` | ${ABBR[role]}`:""}</div>`}</div>`;
 }
 function block(t){
-  const f=field(t),g=i=>pEl(t,f[i]),top=t===topTeam,row=a=>`<div class="row">${a.map(g).join("")}</div>`,front=row(top?[1,2,3]:[3,2,1]),back=row(top?[0,5,4]:[4,5,0]);
+  const f=field(t),rl=fieldRoles(t),g=i=>pEl(t,f[i],false,rl[i]),top=t===topTeam,row=a=>`<div class="row">${a.map(g).join("")}</div>`,front=row(top?[1,2,3]:[3,2,1]),back=row(top?[0,5,4]:[4,5,0]);
   const q=sel[t],b=benchList(t).map(p=>`<div class="p ${q.pl===p.uuid?"sel":""} ${flash&&flash.pl===p.uuid&&flash.t===t?"ok":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>`).join("");
   const acts=["atk","blk","ace","err"].map(k=>`<button class="${q.skill===k?"on":""}" onclick="arm(${t},'${k}')">${SK[k]}</button>`).join("");
   const sub=q.skill==="err"?`<div class="sub">${Object.keys(ERR).map(k=>`<button class="${q.err===k?"on":""}" onclick="setErr(${t},'${k}')">${ERR[k]}</button>`).join("")}</div>`:"";
