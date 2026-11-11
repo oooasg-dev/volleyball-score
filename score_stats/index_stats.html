@@ -54,7 +54,13 @@ const VS="https://volley-stats-14e43-default-rtdb.firebaseio.com";
 const COL={1:"#1976d2",2:"#c62828"},TXT={1:"#0d47a1",2:"#b71c1c"};
 let L={lineup:{},bench:{},libero:{},serving:null,names:{},uuid:null};
 let flash=null,ft=null;let events=[],sel={1:{},2:{}},topTeam=1;
-const SK={atk:"Angriff",blk:"Block",ace:"Ass",err:"Fehler"},ERR={serve:"Aufschl.",atk:"Angriff",other:"Sonst."};
+const SK={atk:"Angriff",blk:"Block",ace:"Ass",err:"Fehler",rec:"Annahme"},ERR={serve:"Aufschl.",atk:"Angriff",other:"Sonst."};
+
+// Annahme: Bewertung wie Data Volley. Gewichte für den Index (Ind) – hier ändern:
+const GR=["#","+","!","-","/","="],REC_W={"=":-8,"/":-7,"-":-1,"!":0,"+":8,"#":10};   // веса приёма (свои)
+// Подача оценивается по приёму соперника: приём → оценка подачи; веса индекса подачи (свои). Ошибка на подаче = "="
+const SV_MAP={"=":"#","/":"/","-":"+","!":"!","+":"-","#":"-"},SV_W={"#":10,"/":8,"+":7,"-":0,"!":4,"=":-10};   // "=" = ошибка на подаче
+const evTxt=e=>e.skill==="rec"?`Annahme (${e.grade})`:`${SK[e.skill]}${e.err?" ("+ERR[e.err]+")":""}`;
 
 // ---------- DVV (nur Aufstellung) ----------
 const app=firebase.initializeApp({databaseURL:"https://sams-score-3liga-default-rtdb.europe-west1.firebasedatabase.app"},"sams");
@@ -81,6 +87,7 @@ db.ref("program/matchUuid").on("value",s=>{
 function replay(ev){
   let s={pts:[0,0,0],sets:[0,0,0],cur:1,hist:[],serve:0};
   for(const e of ev){
+    if(e.pt==null)continue;   // Annahme ohne Punktgewinn
     s.pts[e.pt]++;s.serve=e.pt;
     const t=s.cur===5?15:25,a=s.pts[1],b=s.pts[2];
     if((a>=t||b>=t)&&Math.abs(a-b)>=2){
@@ -91,11 +98,13 @@ function replay(ev){
 }
 function commit(t){
   const q=sel[t];if(!q.skill)return;
-  const s=replay(events),p=q.pl?playerInfo(q.pl):null;
+  if(q.skill==="rec"&&!q.g)return;
+  const s=replay(events),p=q.pl?playerInfo(q.pl):null,rec=q.skill==="rec",sv=rec?(playerInfo(srvUuid())||L.serving||{}):{};
   const ev={ts:Date.now(),set:s.cur,skill:q.skill,err:q.skill==="err"?(q.err||"other"):null,
-    team:t,pt:q.skill==="err"?3-t:t,pl:p?p.uuid:null,num:p?p.num:null,name:p?p.name:null,grade:null};
+    team:t,pt:rec?(q.g==="="?3-t:null):(q.skill==="err"?3-t:t),pl:p?p.uuid:null,num:p?p.num:null,name:p?p.name:null,grade:rec?q.g:null,
+    srv:rec?(sv.uuid||null):null,srvNum:rec?(sv.num||null):null,srvName:rec?(sv.name||null):null};
   if(jref)jref.push(ev);else events.push(ev);
-  flash={t,pl:ev.pl,txt:`${SK[ev.skill]}${ev.err?" ("+ERR[ev.err]+")":""} · ${ev.num?"#"+ev.num+" "+short(ev.name):"ohne Spieler"}`};
+  flash={t,pl:ev.pl,txt:`${evTxt(ev)} · ${ev.num?"#"+ev.num+" "+short(ev.name):"ohne Spieler"}`};
   clearTimeout(ft);ft=setTimeout(()=>{flash=null;render()},1700);
   if(navigator.vibrate)navigator.vibrate(60);
   sel[t]={};save();
@@ -146,14 +155,17 @@ function arm(t,k){sel[3-t]={};let q=sel[t];
   if(q.auto&&k!=="ace"){q.pl=null;q.auto=false}
   q.skill=k;
   if(k==="err"){q.err="other";q.errSet=false}   // по умолчанию «Sonst.», errSet = тип выбран нажатием
+  if(k==="rec")q.g=null;                          // Annahme: erst Note wählen
   if(k==="ace"&&!q.pl&&srvTeam()===t){q.pl=srvUuid();q.auto=true}
+  if(k==="rec")return render();
   if(k!=="err"&&q.pl&&!q.auto)return commit(t);
   render()}
 function pick(t,u){sel[3-t]={};const q=sel[t],same=q.pl===u&&!q.auto;
   q.pl=same?null:u;q.auto=false;
-  if(q.pl&&q.skill&&(q.skill!=="err"||q.errSet))return commit(t);   // ошибка: сохраняем сразу, если тип уже выбран нажатием
+  if(q.pl&&q.skill&&(q.skill!=="err"||q.errSet)&&(q.skill!=="rec"||q.g))return commit(t);   // ошибка: сохраняем сразу, если тип уже выбран нажатием
   render()}
 function setErr(t,k){const q=sel[t];q.err=k;q.errSet=true;if(q.pl)return commit(t);render()}   // игрок уже выбран — сохраняем сразу
+function setGrade(t,g){const q=sel[t];q.g=g;if(q.pl)return commit(t);render()}   // Spieler schon gewählt — sofort speichern
 function pEl(t,p,small,role){
   if(!p)return'<div class="pw"></div>';
   const q=sel[t],c=small?"":"";
@@ -162,52 +174,86 @@ function pEl(t,p,small,role){
 function block(t){
   const f=field(t),rl=fieldRoles(t),g=i=>pEl(t,f[i],false,rl[i]),top=t===topTeam,row=a=>`<div class="row">${a.map(g).join("")}</div>`,front=row(top?[1,2,3]:[3,2,1]),back=row(top?[0,5,4]:[4,5,0]);
   const q=sel[t],b=benchList(t).map(p=>`<div class="p ${q.pl===p.uuid?"sel":""} ${flash&&flash.pl===p.uuid&&flash.t===t?"ok":""}" style="background:${COL[t]}" onclick="pick(${t},'${p.uuid}')">${p.num}</div>`).join("");
-  const acts=["atk","blk","ace","err"].map(k=>`<button class="${q.skill===k?"on":""}" onclick="arm(${t},'${k}')">${SK[k]}</button>`).join("");
-  const sub=q.skill==="err"?`<div class="sub">${Object.keys(ERR).map(k=>`<button class="${q.err===k?"on":""}" onclick="setErr(${t},'${k}')">${ERR[k]}</button>`).join("")}</div>`:"";
+  const K3=srvTeam()===3-t?"rec":"ace",acts=["atk","blk",K3,"err"].map(k=>`<button class="${q.skill===k?"on":""}" onclick="arm(${t},'${k}')">${SK[k]}</button>`).join("");
+  const sub=q.skill==="err"?`<div class="sub">${Object.keys(ERR).map(k=>`<button class="${q.err===k?"on":""}" onclick="setErr(${t},'${k}')">${ERR[k]}</button>`).join("")}</div>`
+    :q.skill==="rec"?`<div class="sub">${GR.map(g=>`<button class="${q.g===g?"on":""}" onclick="setGrade(${t},'${g}')">${g}</button>`).join("")}</div>`:"";
   const first=t===topTeam;
   return`<div class="blk">${flash&&flash.t===t?`<div class="toast">✓ ${flash.txt}</div>`:""}<div class="rows"><div class="hd"><span style="color:${TXT[t]}">${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>${first?back+front:front+back}</div><div class="bench">${b||'<span class="nm">Bank leer</span>'}</div>
-  <div class="act">${acts}<button class="ok" ${q.skill?"":"disabled"} onclick="commit(${t})">OK</button></div>${sub}</div>`;
+  <div class="act">${acts}<button class="ok" ${q.skill&&(q.skill!=="rec"||q.g)?"":"disabled"} onclick="commit(${t})">OK</button></div>${sub}</div>`;
 }
 function stat(t){const c=replay(events).cur,a=agg(events.filter(e=>e.set===c)).team[t];return`${a.atk+a.blk+a.ace} (A${a.atk} B${a.blk} S${a.ace}) F${a.err}`}
 function render(){
+  for(const t of[1,2]){const k=srvTeam()===3-t?"rec":"ace",q=sel[t];if((q.skill==="rec"||q.skill==="ace")&&q.skill!==k)sel[t]={}}   // Aufschlag gewechselt → Auswahl zurücksetzen
   const s=replay(events),o=topTeam,u=3-o;
   document.getElementById("app").innerHTML=block(o)+'<div class="net"></div>'+block(u);
   document.getElementById("pts").textContent=s.pts[1]+" : "+s.pts[2];
   document.getElementById("s1").textContent=s.sets[1];document.getElementById("s2").textContent=s.sets[2];
   const e=events[events.length-1];
-  document.getElementById("log").textContent=e?`${SK[e.skill]}${e.err?" ("+ERR[e.err]+")":""} · ${e.num?"#"+e.num+" "+e.name:"ohne Spieler"}`:"";
+  document.getElementById("log").textContent=e?`${evTxt(e)} · ${e.num?"#"+e.num+" "+e.name:"ohne Spieler"}`:"";
 }
 
 // ---------- Statistik -> vMix ----------
+const rz=()=>({n:0,"#":0,"+":0,"!":0,"-":0,"/":0,"=":0});
 function agg(evs){
   evs=evs||events;
-  const z=()=>({atk:0,blk:0,ace:0,err:0,errs:0});   // errs = Fehler beim Aufschlag (Teilmenge von err)
+  const z=()=>({atk:0,blk:0,ace:0,err:0,errs:0,r:rz(),sv:{n:0,g:{"#":0,"+":0,"!":0,"-":0,"/":0,"=":0}}});   // errs = Fehler beim Aufschlag (Teilmenge von err); r = Annahme; sv = Aufschläge
   const team={1:z(),2:z()},bySet={},pl={};
+  const R=(o,g)=>{o.r.n++;o.r[g]++},S=(o,g)=>{o.sv.n++;o.sv.g[g===null?"=":SV_MAP[g]]++};
+  const P=(u,t,num,name)=>pl[u]||(pl[u]=Object.assign(z(),{uuid:u,team:t,num:num,name:name}));
   for(const e of evs){
-    const se=e.skill==="err"&&e.err==="serve";
+    const b=bySet[e.set]=bySet[e.set]||{1:z(),2:z()};
+    if(e.skill==="rec"){                       // Annahme: Note für Annehmer, Gegenstück für Aufschläger; "=" = Ass
+      const rt=e.team,st=3-rt,g=e.grade;
+      [team[rt],b[rt]].forEach(o=>R(o,g));
+      [team[st],b[st]].forEach(o=>{S(o,g);if(g==="=")o.ace++});
+      if(e.pl)R(P(e.pl,rt,e.num,e.name),g);
+      if(e.srv){const p=P(e.srv,st,e.srvNum,e.srvName);S(p,g);if(g==="=")p.ace++}
+      continue}
+    const se=e.skill==="err"&&e.err==="serve",ow=3-e.team,pe=e.pl?P(e.pl,e.team,e.num,e.name):null;
     team[e.team][e.skill]++;if(se)team[e.team].errs++;
-    const b=bySet[e.set]=bySet[e.set]||{1:z(),2:z()};b[e.team][e.skill]++;if(se)b[e.team].errs++;
-    if(e.pl){const p=pl[e.pl]=pl[e.pl]||{uuid:e.pl,team:e.team,num:e.num,name:e.name,atk:0,blk:0,ace:0,err:0,errs:0};p[e.skill]++;if(se)p.errs++;}
+    b[e.team][e.skill]++;if(se)b[e.team].errs++;
+    if(e.skill==="ace"){                       // Ass ohne Annehmer: zählt als "=" für das Gegnerteam
+      [team[ow],b[ow]].forEach(o=>R(o,"="));[team[e.team],b[e.team]].forEach(o=>S(o,"="));if(pe)S(pe,"=")}
+    if(se){[team[e.team],b[e.team]].forEach(o=>S(o,null));if(pe)S(pe,null)}
+    if(pe){pe[e.skill]++;if(se)pe.errs++}
   }
   Object.values(pl).forEach(p=>p.pts=p.atk+p.blk+p.ace);
   return{team,bySet,pl};
 }
+const pc=(x,n)=>n?Math.round(100*x/n):"";
+function fieldInfo(){                          // кто сейчас на поле и в какой роли (для титров)
+  const o={};
+  for(const t of[1,2]){const rl=fieldRoles(t);
+    o["t"+t]=field(t).map((p,i)=>p?{uuid:p.uuid||"",num:String(p.num||""),name:p.name||"",short:short(p.name),role:ABBR[rl[i]]||""}:null).filter(Boolean)}
+  return o}
+function recFields(r,pre){                     // Annahme: Anzahl, Anteile in %, Index wie Data Volley
+  pre=pre||"";const o={},n=r?r.n:0;o[pre+"r_n"]=n;
+  [["perf","#"],["pos","+"],["ok","!"],["neg","-"],["bad","/"],["eq","="]].forEach(([k,g])=>{const c=r?r[g]:0;o[pre+"r_"+k]=c;o[pre+"r_"+k+"_p"]=pc(c,n)});
+  o[pre+"r_good_p"]=r?pc(r["#"]+r["+"],n):"";
+  o[pre+"r_idx"]=n?Math.round(10*GR.reduce((t,g)=>t+REC_W[g]*r[g],0)/n)/10:"";
+  return o}
+function svFields(x,pre){                      // Aufschlag: Anzahl, Index, Effizienz (#+!/), Ass-%, Fehler-%, Anteil guter Annahmen des Gegners
+  pre=pre||"";const n=x?x.sv.n:0,g=x?x.sv.g:null,rn=g?n-g["="]:0;
+  return{[pre+"sv_n"]:n,
+    [pre+"sv_idx"]:n?Math.round(10*Object.keys(SV_W).reduce((t,k)=>t+SV_W[k]*g[k],0)/n)/10:"",
+    [pre+"sv_eff_p"]:g?pc(g["#"]+g["+"]+g["!"]+g["/"],n):"",
+    [pre+"sv_ace_p"]:pc(x?x.ace:0,n),[pre+"sv_err_p"]:pc(x?x.errs:0,n),[pre+"sv_good_p"]:g?pc(g["-"],rn):""}}
 const short=n=>{if(!n)return"";const a=n.split(" ");return a.length>1?a[0][0]+". "+a.slice(1).join(" "):n};
 let vt=null;function pushVmix(){clearTimeout(vt);vt=setTimeout(doVmix,300)}
 function put(path,val){return fetch(`${VS}/${path}.json`,{method:"PUT",body:JSON.stringify(val)}).catch(()=>{})}
-function teamBlock(o,evs){const B=agg(evs);for(const t of[1,2]){const T=B.team[t];o[`t${t}_pts`]=T.atk+T.blk+T.ace;["atk","blk","ace","err","errs"].forEach(k=>o[`t${t}_${k}`]=T[k])}}
+function teamBlock(o,evs){const B=agg(evs);for(const t of[1,2]){const T=B.team[t];o[`t${t}_pts`]=T.atk+T.blk+T.ace;["atk","blk","ace","err","errs"].forEach(k=>o[`t${t}_${k}`]=T[k]);Object.assign(o,recFields(T.r,`t${t}_`),svFields(T,`t${t}_`))}}
 function doVmix(){
   const s=replay(events),n=s.hist.length;
   const cur={set:s.cur,pts1:s.pts[1],pts2:s.pts[2],sets1:s.sets[1],sets2:s.sets[2]};teamBlock(cur,events.filter(e=>e.set===s.cur));
   const lp=(s.hist[n-1]||":").split(":"),last={set:n,pts1:lp[0],pts2:lp[1]};teamBlock(last,n?events.filter(e=>e.set===n):[]);
   const pl={};
-  for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",photo:p.photo||"",pts:0,atk:0,blk:0,ace:0,err:0,errs:0}});
+  for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",photo:p.photo||"",pts:0,atk:0,blk:0,ace:0,err:0,errs:0,...recFields(null),...svFields(null)}});
   Object.values(agg().pl).forEach(p=>{const q=pl[p.uuid]||(pl[p.uuid]={uuid:p.uuid,team:p.team,teamName:L.names[p.team]||"",num:p.num||"",name:p.name||"",role:(playerInfo(p.uuid)||{}).role||"",photo:(playerInfo(p.uuid)||{}).photo||""});
-    Object.assign(q,{pts:p.pts,atk:p.atk,blk:p.blk,ace:p.ace,err:p.err,errs:p.errs})});
+    Object.assign(q,{pts:p.pts,atk:p.atk,blk:p.blk,ace:p.ace,err:p.err,errs:p.errs,...recFields(p.r),...svFields(p)})});
   const all=Object.values(pl).filter(p=>p.pts>0).sort((a,b)=>b.pts-a.pts||b.atk-a.atk);
-  put("stats_cur",[cur]);put("stats_last",[last]);put("stats_players",pl);
+  put("stats_cur",[cur]);put("stats_last",[last]);put("stats_players",pl);put("stats_field",[fieldInfo()]);
   // подающий и серия очков подряд в текущем сэте (для страницы комментаторов)
-  const cs=events.filter(e=>e.set===s.cur);let run=0,rt=0;
+  const cs=events.filter(e=>e.set===s.cur&&e.pt!=null);let run=0,rt=0;
   if(cs.length){rt=cs[cs.length-1].pt;for(let i=cs.length-1;i>=0&&cs[i].pt===rt;i--)run++}
   put("stats_serving",[{uuid:srvUuid()||"",team:srvTeam()||0,run:run,runTeam:rt}]);
   const F=["uuid","name","num","role","photo","teamName","pts","atk","blk","ace","err","errs"],flat=(o,pre,p)=>{F.forEach(k=>o[pre+k]=p?p[k]:"");o[pre+"short"]=p?short(p.name):"";o[pre+"team"]=p?p.team:""};
