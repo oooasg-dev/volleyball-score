@@ -30,19 +30,20 @@ body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f0f0;margin:0
 .p.srv{border-color:#ffeb3b}
 .p.sel{transform:scale(1.15);box-shadow:0 0 0 3px #fff,0 0 0 6px #263238}
 .nm{margin-top:3px;font-size:var(--nm);line-height:1.15;font-weight:700;color:#1c1c1c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bench{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;min-height:var(--b)}
+.bench{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px;min-height:36px}
 .bench .p{width:var(--b);height:var(--b);font-size:calc(var(--b)*.47);margin:0;opacity:.9}
 .bench .nm{margin:0}
 .act{display:flex;gap:4px;margin-top:7px}
 .act button{flex:1;min-width:0;padding:0;height:var(--btn);border:0;border-radius:9px;background:#546e7a;color:#fff;font-weight:bold;font-size:var(--btn-fs)}
 .act button.on{background:#ff9800;color:#000}.act .ok{background:#2e7d32;flex:.9}.act .ok:disabled{background:#90a4ae}
-.sub{display:flex;gap:4px;margin-top:6px}.sub button{flex:1;padding:8px 0;border:0;border-radius:8px;background:#cfd8dc;font-size:14px;font-weight:700}.sub button.on{background:#ff9800}
+.sub{display:flex;gap:4px;margin-top:7px;min-height:36px}.sub button{flex:1;height:36px;padding:0;border:0;border-radius:8px;background:#cfd8dc;font-size:14px;font-weight:700}.sub button.on{background:#ff9800}
 .net{display:none}
 .toast{position:absolute;left:12px;right:12px;top:8px;z-index:5;background:#1b5e20;color:#fff;border-radius:10px;padding:7px 10px;font-weight:bold;font-size:16px;text-align:center;animation:fade 1.6s forwards}
 @keyframes fade{0%,70%{opacity:1}100%{opacity:0}}
 .p.ok{animation:okp .7s;box-shadow:0 0 0 5px #4caf50,0 0 14px 6px #4caf5099}
 @keyframes okp{0%{transform:scale(1.4)}100%{transform:scale(1)}}
 .log{font-size:14px;font-weight:600;color:#37474f;text-align:center;min-height:18px;padding-bottom:2px}
+
 </style></head><body><div class="w">
 <div class="top"><button onclick="swap()">⇅</button>
 <div class="ss" id="s1">0</div><div class="sc" id="pts">0:0</div><div class="ss" id="s2">0</div>
@@ -70,18 +71,43 @@ listen("program/live/live/lineup",v=>L.lineup=v||{});
 listen("program/live/live/bench",v=>L.bench=v||{});
 listen("program/live/roster",v=>L.roster=v||{});
 listen("program/live/live/libero",v=>L.libero=v||{});
-listen("program/live/live/servingPlayer",v=>L.serving=v);
+listen("program/live/live/servingPlayer",v=>{L.serving=v;scSched()});
+listen("program/live/live/currentSetScore",v=>{L.score=v;L.scoreSeen=true;scSched()});
+listen("program/live/live/setNumber",v=>{L.setNo=v;scSched()});
+listen("program/live/live/servingTeam",v=>{L.servingTeam=v;scSched()});
 listen("program/live/meta/team1Name",v=>L.names[1]=v||"Team 1");
 listen("program/live/meta/team2Name",v=>L.names[2]=v||"Team 2");
 const vdb=firebase.database(firebase.initializeApp({databaseURL:VS},"vs"));
 let jref=null,keys=[];
 db.ref("program/matchUuid").on("value",s=>{
   L.uuid=s.val();if(jref){jref.off();jref=null}
-  events=[];keys=[];
+  if(sref){sref.off();sref=null}
+  events=[];keys=[];serves={};SC=null;SCH={};
+  if(L.uuid){sref=vdb.ref(`stats_journal/${L.uuid}/serves`);sref.on("value",sn=>{serves=sn.val()||{};render();pushVmix()})}
   if(!L.uuid){render();return}
   jref=vdb.ref(`stats_journal/${L.uuid}/events`);
   jref.on("value",sn=>{events=[];keys=[];sn.forEach(c=>{events.push(c.val());keys.push(c.key)});render();pushVmix()});
 });
+
+// ---------- Aufschläge aus dem DVV-Spielstand ----------
+// Jeder Punkt = ein Aufschlag des Spielers, der VOR dem Punkt aufschlug. Ablage: stats_journal/<match>/serves/<satz>_<punkte>
+// SCH merkt sich pro Punktestand, wer da aufschlug -> bleibt richtig, wenn der Tisch Punkte zurücknimmt oder ändert.
+let SC=null,SCH={},sct=null,serves={},sref=null;
+function scSched(){clearTimeout(sct);sct=setTimeout(scEval,400)}   // kurz warten, bis Spielstand und Aufschläger beide da sind
+function scEval(){
+  if(!L.uuid||!sref||!L.scoreSeen||L.setNo==null||!L.serving)return;
+  const cs=L.score||{},a=Number(cs.team1)||0,b=Number(cs.team2)||0,tot=a+b,set=L.setNo,
+    st={p:L.serving,team:L.servingTeam==="team2"?2:1};
+  const drop=n=>Object.keys(serves).forEach(k=>{const x=serves[k];if(x&&x.set===set&&x.n>n)sref.child(k).remove()});
+  const put=n=>{const h=SCH[n-1],k=set+"_"+n;
+    if(!h||!h.p||!h.p.uuid){sref.child(k).remove();return}
+    sref.child(k).set({set:set,n:n,team:h.team,pl:h.p.uuid,num:h.p.num||null,name:h.p.name||null})};
+  if(!SC||SC.set!==set){SCH={};drop(tot)}                              // Start / Satzwechsel: Reste über dem Stand löschen
+  else if(tot<SC.t){drop(tot);Object.keys(SCH).forEach(k=>{if(+k>tot)delete SCH[k]})}   // Tisch hat Punkte zurückgenommen
+  else if(tot===SC.t+1)put(tot);                                       // ein Punkt dazu
+  else if(tot===SC.t&&(a!==SC.a||b!==SC.b))put(tot);                   // Punkt vom Tisch geändert (anderes Team)
+  SCH[tot]=st;SC={set:set,t:tot,a:a,b:b};
+}
 
 // ---------- Eigene Zählung ----------
 function replay(ev){
@@ -99,7 +125,7 @@ function replay(ev){
 function commit(t){
   const q=sel[t];if(!q.skill)return;
   if(q.skill==="rec"&&!q.g)return;
-  const s=replay(events),p=q.pl?playerInfo(q.pl):null,rec=q.skill==="rec",sv=rec?(playerInfo(srvUuid())||L.serving||{}):{};
+  const s=replay(events),p=q.pl?playerInfo(q.pl):null,rec=q.skill==="rec",sv=rec?(q.srvP||playerInfo(srvUuid())||L.serving||{}):{};
   const ev={ts:Date.now(),set:s.cur,skill:q.skill,err:q.skill==="err"?(q.err||"other"):null,
     team:t,pt:rec?(q.g==="="?3-t:null):(q.skill==="err"?3-t:t),pl:p?p.uuid:null,num:p?p.num:null,name:p?p.name:null,grade:rec?q.g:null,
     srv:rec?(sv.uuid||null):null,srvNum:rec?(sv.num||null):null,srvName:rec?(sv.name||null):null};
@@ -114,6 +140,7 @@ function resetAll(){
   if(!confirm("Сбросить всё на 0?\nСтатистика этого матча будет удалена."))return;
   sel={1:{},2:{}};flash=null;
   if(jref)jref.remove();else events=[];
+  if(sref)sref.remove();serves={};
   save();
 }
 (function(){const b=document.getElementById("undo");let t=null,held=false;
@@ -155,7 +182,8 @@ function arm(t,k){sel[3-t]={};let q=sel[t];
   if(q.auto&&k!=="ace"){q.pl=null;q.auto=false}
   q.skill=k;
   if(k==="err"){q.err="other";q.errSet=false}   // по умолчанию «Sonst.», errSet = тип выбран нажатием
-  if(k==="rec")q.g=null;                          // Annahme: erst Note wählen
+  if(k==="rec"){q.g=null;q.srvP=playerInfo(srvUuid())||L.serving||null}   // Annahme: erst Note wählen; Aufschläger JETZT merken
+  else q.srvP=null;
   if(k==="ace"&&!q.pl&&srvTeam()===t){q.pl=srvUuid();q.auto=true}
   if(k==="rec")return render();
   if(k!=="err"&&q.pl&&!q.auto)return commit(t);
@@ -178,12 +206,12 @@ function block(t){
   const sub=q.skill==="err"?`<div class="sub">${Object.keys(ERR).map(k=>`<button class="${q.err===k?"on":""}" onclick="setErr(${t},'${k}')">${ERR[k]}</button>`).join("")}</div>`
     :q.skill==="rec"?`<div class="sub">${GR.map(g=>`<button class="${q.g===g?"on":""}" onclick="setGrade(${t},'${g}')">${g}</button>`).join("")}</div>`:"";
   const first=t===topTeam;
-  return`<div class="blk">${flash&&flash.t===t?`<div class="toast">✓ ${flash.txt}</div>`:""}<div class="rows"><div class="hd"><span style="color:${TXT[t]}">${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>${first?back+front:front+back}</div><div class="bench">${b||'<span class="nm">Bank leer</span>'}</div>
-  <div class="act">${acts}<button class="ok" ${q.skill&&(q.skill!=="rec"||q.g)?"":"disabled"} onclick="commit(${t})">OK</button></div>${sub}</div>`;
+  return`<div class="blk">${flash&&flash.t===t?`<div class="toast">✓ ${flash.txt}</div>`:""}<div class="rows"><div class="hd"><span style="color:${TXT[t]}">${L.names[t]||"Team "+t}</span><span>${stat(t)}</span></div>${first?back+front:front+back}</div>${sub||`<div class="bench">${b||'<span class="nm">Bank leer</span>'}</div>`}
+  <div class="act">${acts}<button class="ok" ${q.skill&&(q.skill!=="rec"||q.g)?"":"disabled"} onclick="commit(${t})">OK</button></div></div>`;
 }
 function stat(t){const c=replay(events).cur,a=agg(events.filter(e=>e.set===c)).team[t];return`${a.atk+a.blk+a.ace} (A${a.atk} B${a.blk} S${a.ace}) F${a.err}`}
 function render(){
-  for(const t of[1,2]){const k=srvTeam()===3-t?"rec":"ace",q=sel[t];if((q.skill==="rec"||q.skill==="ace")&&q.skill!==k)sel[t]={}}   // Aufschlag gewechselt → Auswahl zurücksetzen
+  for(const t of[1,2]){const k=srvTeam()===3-t?"rec":"ace",q=sel[t];if(((q.skill==="rec"&&!q.srvP)||q.skill==="ace")&&q.skill!==k)sel[t]={}}   // Aufschlag gewechselt → Auswahl zurücksetzen
   const s=replay(events),o=topTeam,u=3-o;
   document.getElementById("app").innerHTML=block(o)+'<div class="net"></div>'+block(u);
   document.getElementById("pts").textContent=s.pts[1]+" : "+s.pts[2];
@@ -194,11 +222,11 @@ function render(){
 
 // ---------- Statistik -> vMix ----------
 const rz=()=>({n:0,"#":0,"+":0,"!":0,"-":0,"/":0,"=":0});
-function agg(evs){
+function agg(evs,set){
   evs=evs||events;
   const z=()=>({atk:0,blk:0,ace:0,err:0,errs:0,r:rz(),sv:{n:0,g:{"#":0,"+":0,"!":0,"-":0,"/":0,"=":0}}});   // errs = Fehler beim Aufschlag (Teilmenge von err); r = Annahme; sv = Aufschläge
   const team={1:z(),2:z()},bySet={},pl={};
-  const R=(o,g)=>{o.r.n++;o.r[g]++},S=(o,g)=>{o.sv.n++;o.sv.g[g===null?"=":SV_MAP[g]]++};
+  const R=(o,g)=>{o.r.n++;o.r[g]++},S=(o,g)=>{o.sv.g[g===null?"=":SV_MAP[g]]++};   // sv.g = bewertete Aufschläge; sv.n (alle Aufschläge) kommt aus "serves"
   const P=(u,t,num,name)=>pl[u]||(pl[u]=Object.assign(z(),{uuid:u,team:t,num:num,name:name}));
   for(const e of evs){
     const b=bySet[e.set]=bySet[e.set]||{1:z(),2:z()};
@@ -217,6 +245,7 @@ function agg(evs){
     if(se){[team[e.team],b[e.team]].forEach(o=>S(o,null));if(pe)S(pe,null)}
     if(pe){pe[e.skill]++;if(se)pe.errs++}
   }
+  Object.values(serves||{}).forEach(x=>{if(!x||(set!=null&&x.set!==set))return;if(team[x.team])team[x.team].sv.n++;if(x.pl)P(x.pl,x.team,x.num,x.name).sv.n++});
   Object.values(pl).forEach(p=>p.pts=p.atk+p.blk+p.ace);
   return{team,bySet,pl};
 }
@@ -232,20 +261,20 @@ function recFields(r,pre){                     // Annahme: Anzahl, Anteile in %,
   o[pre+"r_good_p"]=r?pc(r["#"]+r["+"],n):"";
   o[pre+"r_idx"]=n?Math.round(10*GR.reduce((t,g)=>t+REC_W[g]*r[g],0)/n)/10:"";
   return o}
-function svFields(x,pre){                      // Aufschlag: Anzahl, Index, Effizienz (#+!/), Ass-%, Fehler-%, Anteil guter Annahmen des Gegners
-  pre=pre||"";const n=x?x.sv.n:0,g=x?x.sv.g:null,rn=g?n-g["="]:0;
-  return{[pre+"sv_n"]:n,
-    [pre+"sv_idx"]:n?Math.round(10*Object.keys(SV_W).reduce((t,k)=>t+SV_W[k]*g[k],0)/n)/10:"",
-    [pre+"sv_eff_p"]:g?pc(g["#"]+g["+"]+g["!"]+g["/"],n):"",
-    [pre+"sv_ace_p"]:pc(x?x.ace:0,n),[pre+"sv_err_p"]:pc(x?x.errs:0,n),[pre+"sv_good_p"]:g?pc(g["-"],rn):""}}
+function svFields(x,pre){                      // Aufschlag: sv_n = alle Aufschläge (DVV), sv_r = bewertete; Index/Effizienz nur über bewertete
+  pre=pre||"";const g=x?x.sv.g:null,r=g?Object.values(g).reduce((a,b)=>a+b,0):0,n=x?Math.max(x.sv.n,r):0,rn=g?r-g["="]:0;
+  return{[pre+"sv_n"]:n,[pre+"sv_r"]:r,
+    [pre+"sv_idx"]:r?Math.round(10*Object.keys(SV_W).reduce((t,k)=>t+SV_W[k]*g[k],0)/r)/10:"",
+    [pre+"sv_eff_p"]:r?pc(g["#"]+g["+"]+g["!"]+g["/"],r):"",
+    [pre+"sv_ace_p"]:pc(x?x.ace:0,n),[pre+"sv_err_p"]:pc(x?x.errs:0,n),[pre+"sv_good_p"]:r?pc(g["-"],rn):""}}
 const short=n=>{if(!n)return"";const a=n.split(" ");return a.length>1?a[0][0]+". "+a.slice(1).join(" "):n};
 let vt=null;function pushVmix(){clearTimeout(vt);vt=setTimeout(doVmix,300)}
 function put(path,val){return fetch(`${VS}/${path}.json`,{method:"PUT",body:JSON.stringify(val)}).catch(()=>{})}
-function teamBlock(o,evs){const B=agg(evs);for(const t of[1,2]){const T=B.team[t];o[`t${t}_pts`]=T.atk+T.blk+T.ace;["atk","blk","ace","err","errs"].forEach(k=>o[`t${t}_${k}`]=T[k]);Object.assign(o,recFields(T.r,`t${t}_`),svFields(T,`t${t}_`))}}
+function teamBlock(o,evs,set){const B=agg(evs,set);for(const t of[1,2]){const T=B.team[t];o[`t${t}_pts`]=T.atk+T.blk+T.ace;["atk","blk","ace","err","errs"].forEach(k=>o[`t${t}_${k}`]=T[k]);Object.assign(o,recFields(T.r,`t${t}_`),svFields(T,`t${t}_`))}}
 function doVmix(){
   const s=replay(events),n=s.hist.length;
-  const cur={set:s.cur,pts1:s.pts[1],pts2:s.pts[2],sets1:s.sets[1],sets2:s.sets[2]};teamBlock(cur,events.filter(e=>e.set===s.cur));
-  const lp=(s.hist[n-1]||":").split(":"),last={set:n,pts1:lp[0],pts2:lp[1]};teamBlock(last,n?events.filter(e=>e.set===n):[]);
+  const cur={set:s.cur,pts1:s.pts[1],pts2:s.pts[2],sets1:s.sets[1],sets2:s.sets[2]};teamBlock(cur,events.filter(e=>e.set===s.cur),s.cur);
+  const lp=(s.hist[n-1]||":").split(":"),last={set:n,pts1:lp[0],pts2:lp[1]};teamBlock(last,n?events.filter(e=>e.set===n):[],n);
   const pl={};
   for(const t of[1,2])Object.values((L.roster&&L.roster[team(t)])||{}).forEach(p=>{if(p&&p.uuid)pl[p.uuid]={uuid:p.uuid,team:t,teamName:L.names[t]||"",num:p.num||"",name:p.name||"",role:p.role||"",photo:p.photo||"",pts:0,atk:0,blk:0,ace:0,err:0,errs:0,...recFields(null),...svFields(null)}});
   Object.values(agg().pl).forEach(p=>{const q=pl[p.uuid]||(pl[p.uuid]={uuid:p.uuid,team:p.team,teamName:L.names[p.team]||"",num:p.num||"",name:p.name||"",role:(playerInfo(p.uuid)||{}).role||"",photo:(playerInfo(p.uuid)||{}).photo||""});
